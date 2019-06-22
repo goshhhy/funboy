@@ -9,6 +9,8 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 
+#include "io.h"
+
 SDL_Window 	*window;
 SDL_Surface *wsurface;
 SDL_Surface *rsurface;
@@ -196,6 +198,6 @@ void IO_DrawLine( short x1, short y1,  short x2, short y2, short r, short g, sho
 
 void IO_DrawFill( short x1, short y1,  short x2, short y2, short r, short g, short b ) {
 	for( ; x1 != x2; x1 < x2 ? x1++ : x1-- ) {
-		DrawLine( x1, y1, x1, y2, r, g, b );
+		IO_DrawLine( x1, y1, x1, y2, r, g, b );
 	}
 }

@@ -32,7 +32,7 @@ static busDevice_t* GetTargetBusDevice( busInfo_t* bus, uint32_t addr ) {
     return NULL;
 }
 
-static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr ) {
+static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr, bool final ) {
     busInfo_t *bus;
     busDevice_t *subdev;
 
@@ -43,11 +43,11 @@ static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr ) {
     subdev = GetTargetBusDevice( bus, addr );
     if ( !subdev || subdev == dev )
         return 0;
-    return subdev->Read8( subdev, addr );
+    return subdev->Read8( subdev, addr, final );
 }
 
 
-static void GenericBusWrite( busDevice_t *dev, uint32_t addr, uint8_t val ) {
+static void GenericBusWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     busInfo_t *bus;
     busDevice_t *subdev;
 
@@ -57,7 +57,7 @@ static void GenericBusWrite( busDevice_t *dev, uint32_t addr, uint8_t val ) {
     subdev = GetTargetBusDevice( bus, addr );
     if ( !subdev || subdev == dev )
         return;
-    subdev->Write8( subdev, addr, val );
+    subdev->Write8( subdev, addr, val, final );
 }
 
 void GenericBusMapping( busDevice_t *dev, char* name, uint32_t addr_start, uint32_t addr_end, busDevice_t *subdev ) {

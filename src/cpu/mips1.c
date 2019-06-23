@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "../device/device.h"
 
@@ -67,18 +68,18 @@ typedef union mipsInstruction_s {
 } mipsInstruction_t;
 
 uint32_t Read32( busDevice_t *bus, uint32_t addr ) {
-    return ( bus->Read8( bus, addr + 3 ) << 24 ) +
-            ( bus->Read8( bus, addr + 2 ) << 16 ) +
-            ( bus->Read8( bus, addr + 1 ) << 8 ) +
-            bus->Read8( bus, addr + 0 );
+    return ( bus->Read8( bus, addr + 3, false ) << 24 ) +
+            ( bus->Read8( bus, addr + 2, false ) << 16 ) +
+            ( bus->Read8( bus, addr + 1, false ) << 8 ) +
+            bus->Read8( bus, addr + 0, true );
 }
 
 
 void Write( busDevice_t *bus, uint32_t addr, uint32_t val ) {
-    bus->Write8( bus, addr + 3, val >> 24 );
-    bus->Write8( bus, addr + 2, val >> 16 );
-    bus->Write8( bus, addr + 1, val >> 8 );
-    bus->Write8( bus, addr + 0, val );
+    bus->Write8( bus, addr + 3, val >> 24, false );
+    bus->Write8( bus, addr + 2, val >> 16, false );
+    bus->Write8( bus, addr + 1, val >> 8, false );
+    bus->Write8( bus, addr + 0, val, true );
 }
 
 void Reset( mips1_t *cpu ) {

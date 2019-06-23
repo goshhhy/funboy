@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h> 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "device.h"
 
@@ -9,7 +10,7 @@ typedef struct ramInfo_s {
     char* bytes;
 } ramInfo_t;
 
-static uint8_t GenericRamRead( busDevice_t *dev, uint32_t addr ) {
+static uint8_t GenericRamRead( busDevice_t *dev, uint32_t addr, bool final ) {
     ramInfo_t *ram;
 
     if ( !dev || dev->data )
@@ -24,7 +25,7 @@ static uint8_t GenericRamRead( busDevice_t *dev, uint32_t addr ) {
 }
 
 
-static void GenericRamWrite( busDevice_t *dev, uint32_t addr, uint8_t val ) {
+static void GenericRamWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     ramInfo_t *ram;
 
     if ( !dev || dev->data )

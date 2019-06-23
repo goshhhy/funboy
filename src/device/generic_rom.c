@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h> 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "device.h"
 
@@ -10,7 +11,7 @@ typedef struct romInfo_s {
     char* bytes;
 } romInfo_t;
 
-static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr ) {
+static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr, bool final ) {
     romInfo_t *rom;
 
     if ( !dev || dev->data )
@@ -25,7 +26,7 @@ static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr ) {
 }
 
 
-static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val ) {
+static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     romInfo_t *rom;
 
     if ( !dev || dev->data )

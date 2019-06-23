@@ -1,8 +1,8 @@
 
 typedef struct busDevice_s {
     void* data;
-    uint8_t (*Read8)( struct busDevice_s* self, uint32_t addr );
-    void (*Write8)( struct busDevice_s* self, uint32_t addr, uint8_t val );
+    uint8_t (*Read8)( struct busDevice_s* self, uint32_t addr, bool final );
+    void (*Write8)( struct busDevice_s* self, uint32_t addr, uint8_t val, bool final );
 } busDevice_t;
 
 // generic devices for all platforms

@@ -1,4 +1,6 @@
 // contains all data needed for mips processor emulation, and callback functions
+
+#pragma pack()
 typedef struct mips1_s {
     uint32_t gp_regs[32];
     union {
@@ -40,5 +42,31 @@ typedef struct mips1_s {
     void (*Reset)( struct mips1_s *self );
     void (*Step)( struct mips1_s *self );
 } mips1_t;
+
+#pragma pack(0)
+typedef struct mipsInstruction_s {
+        union {
+            uint32_t full;
+            struct { //j-type
+                uint8_t op : 6;
+                uint32_t target : 26;
+            };
+            struct { //i-type
+                uint8_t op_i : 6;
+                uint8_t rs : 5;
+                uint8_t rt : 5;
+                uint16_t imm : 16;
+            };
+            struct { //r-type
+                uint8_t op_r : 6;
+                uint8_t rs_r : 5;
+                uint8_t rt_r : 5;
+                uint8_t rd : 5;
+                uint8_t shamt : 5;
+                uint8_t funct : 6; 
+            };
+        };
+} mipsInstruction_t;
+#pragma pack()
 
 mips1_t *Mips1( busDevice_t *bus );

@@ -8,5 +8,6 @@ typedef struct busDevice_s {
 // generic devices for all platforms
 busDevice_t *GenericRam( size_t len );
 busDevice_t *GenericRom( char *fileName, size_t len );
+char* GenericRomBytesPtr( busDevice_t *dev );
 busDevice_t *GenericBus( char* name );
 void GenericBusMapping( busDevice_t *dev, char* name, uint32_t addr_start, uint32_t addr_end, busDevice_t *subdev );

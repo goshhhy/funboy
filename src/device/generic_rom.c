@@ -40,6 +40,16 @@ static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
     rom->bytes[addr] = val;
 }
 
+char* GenericRomBytesPtr( busDevice_t *dev ) {
+    romInfo_t *rom;
+
+    if ( !dev || !dev->data )
+        return NULL;
+    rom = dev->data;
+
+    return rom->bytes;
+}
+
 busDevice_t *GenericRom( char *fileName, size_t len ) {
     FILE *f = fopen( fileName, "r" );
     busDevice_t *dev;

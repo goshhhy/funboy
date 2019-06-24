@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "version.h"
 
 #include "device/device.h"
-#include "cpu/mips1.h"
+#include "cpu/mips1/mips1.h"
 
 int main( int argc, char **argv ) {
     printf( "kutaragi! v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
@@ -35,7 +36,15 @@ int main( int argc, char **argv ) {
     // GenericBusMapping( ps1bus, "cache.kseg2",   0xfffe0000, 0xbf801fff, cachecontrol );
     mips1_t *cpu = Mips1( ps1bus );
 
+    char *bytes = GenericRomBytesPtr( rom );
+    if ( bytes != NULL ) {
+        char romVer[256], romCopyright[256];
+        strncpy( romVer, &bytes[0x42e74], 255 );
+        strncpy( romCopyright, &bytes[0x42e8c], 255 );
+        printf( "\n%s%s\n", romVer, romCopyright );
+    }
+
     while ( true ) {
-	cpu->Step( cpu );
+	    cpu->Step( cpu );
     }
 }

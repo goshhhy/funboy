@@ -13,7 +13,7 @@ typedef struct ramInfo_s {
 static uint8_t GenericRamRead( busDevice_t *dev, uint32_t addr, bool final ) {
     ramInfo_t *ram;
 
-    if ( !dev || dev->data )
+    if ( !dev || !dev->data )
         return 0;
     ram = dev->data;
 
@@ -28,7 +28,7 @@ static uint8_t GenericRamRead( busDevice_t *dev, uint32_t addr, bool final ) {
 static void GenericRamWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     ramInfo_t *ram;
 
-    if ( !dev || dev->data )
+    if ( !dev || !dev->data )
         return;
     ram = dev->data;
 

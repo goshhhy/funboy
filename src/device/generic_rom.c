@@ -14,7 +14,7 @@ typedef struct romInfo_s {
 static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr, bool final ) {
     romInfo_t *rom;
 
-    if ( !dev || dev->data )
+    if ( !dev || !dev->data )
         return 0;
     rom = dev->data;
 
@@ -29,7 +29,7 @@ static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr, bool final ) {
 static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     romInfo_t *rom;
 
-    if ( !dev || dev->data )
+    if ( !dev || !dev->data )
         return;
     rom = dev->data;
 

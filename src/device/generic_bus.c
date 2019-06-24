@@ -19,45 +19,47 @@ typedef struct busInfo_s {
     busMapping_t mappings[MAX_MAPPINGS];
 } busInfo_t;
 
-static busDevice_t* GetTargetBusDevice( busInfo_t* bus, uint32_t addr ) {
+static busMapping_t* GetTargetBusMapping( busInfo_t* bus, uint32_t addr ) {
     for ( int i = 0; i < MAX_MAPPINGS; i++ ) {
         if ( bus->mappings[i].device ) {
-            if ( addr >= bus->mappings[i].addr_end ) {
+            if ( addr >= bus->mappings[i].addr_start ) {
                 if ( addr <= bus->mappings[i].addr_end ) {
-                    return bus->mappings[i].device;
+                    printf( "forwarding access to device %s\n", bus->mappings[i].name );
+                    return &bus->mappings[i];
                 }
             }
         }
     }
+    printf( "no device found for access\n" );
     return NULL;
 }
 
 static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr, bool final ) {
     busInfo_t *bus;
-    busDevice_t *subdev;
+    busMapping_t *mapping;
 
-    if ( !dev || dev->data )
+    if ( !dev || !dev->data )
         return 0;
     bus = dev->data;
 
-    subdev = GetTargetBusDevice( bus, addr );
-    if ( !subdev || subdev == dev )
+    mapping = GetTargetBusMapping( bus, addr );
+    if ( !mapping || mapping->device == dev )
         return 0;
-    return subdev->Read8( subdev, addr, final );
+    return mapping->device->Read8( mapping->device, addr - mapping->addr_start, final );
 }
 
 
 static void GenericBusWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     busInfo_t *bus;
-    busDevice_t *subdev;
+    busMapping_t *mapping;
 
-    if ( !dev || dev->data )
+    if ( !dev || !dev->data )
         return;
     bus = dev->data;
-    subdev = GetTargetBusDevice( bus, addr );
-    if ( !subdev || subdev == dev )
+    mapping = GetTargetBusMapping( bus, addr );
+    if ( !mapping || mapping->device == dev )
         return;
-    subdev->Write8( subdev, addr, val, final );
+    mapping->device->Write8( mapping->device, addr - mapping->addr_start, val, final );
 }
 
 void GenericBusMapping( busDevice_t *dev, char* name, uint32_t addr_start, uint32_t addr_end, busDevice_t *subdev ) {

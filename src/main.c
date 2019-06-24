@@ -3,7 +3,9 @@
 #include <stdbool.h>
 
 #include "version.h"
+
 #include "device/device.h"
+#include "cpu/mips1.h"
 
 int main( int argc, char **argv ) {
     printf( "kutaragi! v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
@@ -31,4 +33,9 @@ int main( int argc, char **argv ) {
     GenericBusMapping( ps1bus, "iomap.kseg1",   0xbf801000, 0xbf801fff, iomap );
     // KSEG2 mappings
     // GenericBusMapping( ps1bus, "cache.kseg2",   0xfffe0000, 0xbf801fff, cachecontrol );
+    mips1_t *cpu = Mips1( ps1bus );
+
+    while ( true ) {
+	cpu->Step( cpu );
+    }
 }

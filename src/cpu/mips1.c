@@ -1,51 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 #include "../device/device.h"
+#include "mips1.h"
 
-// contains all data needed for mips processor emulation, and callback functions
-typedef struct mips1_s {
-    uint32_t gp_regs[32];
-    union {
-       uint32_t sr;
-       struct {
-           uint8_t cu3: 1;
-           uint8_t cu2: 1;
-           uint8_t cu1: 1;
-           uint8_t cu0: 1;
-           uint8_t zero0: 2;
-           uint8_t re: 1;
-           uint8_t zero1: 2;
-           uint8_t bev: 1;
-           uint8_t ts: 1;
-           uint8_t pe: 1;
-           uint8_t cm: 1;
-           uint8_t pz: 1;
-           uint8_t swc: 1;
-           uint8_t isc: 1;
-           uint8_t im: 8;
-           uint8_t zero2: 2;
-           uint8_t kuo: 1;
-           uint8_t ieo: 1;
-           uint8_t kup: 1;
-           uint8_t iep: 1;
-           uint8_t kuc: 1;
-           uint8_t iec: 1;
-       };
-    };
-    uint32_t pc;
-    union {
-        uint64_t mf;
-        union {
-            uint32_t mfhi;
-            uint32_t mflo;
-        };
-    };
-    busDevice_t* bus;
-} mips1_t;
-
-typedef union mipsInstruction_s {
+typedef struct mipsInstruction_s {
         uint32_t full;
         struct { //j-type
             uint8_t op : 6;
@@ -67,7 +28,8 @@ typedef union mipsInstruction_s {
         };
 } mipsInstruction_t;
 
-uint32_t Read32( busDevice_t *bus, uint32_t addr ) {
+static uint32_t Read32( busDevice_t *bus, uint32_t addr ) {
+    printf( "32 bit read from %x\n", addr );
     return ( bus->Read8( bus, addr + 3, false ) << 24 ) +
             ( bus->Read8( bus, addr + 2, false ) << 16 ) +
             ( bus->Read8( bus, addr + 1, false ) << 8 ) +
@@ -75,25 +37,37 @@ uint32_t Read32( busDevice_t *bus, uint32_t addr ) {
 }
 
 
-void Write( busDevice_t *bus, uint32_t addr, uint32_t val ) {
+static void Write32( busDevice_t *bus, uint32_t addr, uint32_t val ) {
+    printf( "32 bit write to %x\n", addr );
     bus->Write8( bus, addr + 3, val >> 24, false );
     bus->Write8( bus, addr + 2, val >> 16, false );
     bus->Write8( bus, addr + 1, val >> 8, false );
     bus->Write8( bus, addr + 0, val, true );
+    printf( "32 bit write complete\n" );
 }
 
-void Reset( mips1_t *cpu ) {
+static void Reset( mips1_t *cpu ) {
     cpu->pc = 0xbfc00000;
 }
 
-void Step( mips1_t *cpu ) {
+static void Step( mips1_t *cpu ) {
     mipsInstruction_t inst;
     inst.full = Read32( cpu->bus, cpu->pc );
 
     switch ( inst.full & 0xFC00003F ) {
         default:
             printf("unhandled instruction %08x\n", inst.full );
-            break;
+            exit( 100 );
     }
     cpu->pc += 4;
+}
+
+mips1_t *Mips1( busDevice_t *bus ) {
+	mips1_t *cpu = calloc( 1, sizeof( mips1_t ) );
+	cpu->bus = bus;
+	cpu->Reset = Reset;
+	cpu->Step = Step;
+	Reset( cpu );
+    printf( "mips1 cpu created\n" );
+	return cpu;
 }

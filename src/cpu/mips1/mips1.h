@@ -39,6 +39,7 @@ typedef struct mips1_s {
         };
     };
     busDevice_t* bus;
+    uint32_t steps;
     void (*Reset)( struct mips1_s *self );
     void (*Step)( struct mips1_s *self );
 } mips1_t;

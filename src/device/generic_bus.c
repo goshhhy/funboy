@@ -44,7 +44,7 @@ static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr, bool final ) {
 
     mapping = GetTargetBusMapping( bus, addr );
     if ( !mapping || mapping->device == dev )
-        return 0;
+        return 0xFF;
     return mapping->device->Read8( mapping->device, addr - mapping->addr_start, final );
 }
 

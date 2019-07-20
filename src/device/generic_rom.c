@@ -37,7 +37,7 @@ static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
         fprintf( stderr, "warning: GenericRamWrite: address out of bounds\n" );
         return;
     }
-    rom->bytes[addr] = val;
+    fprintf( stderr, "warning: discarded write to rom area\n" );
 }
 
 char* GenericRomBytesPtr( busDevice_t *dev ) {

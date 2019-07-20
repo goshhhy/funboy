@@ -3,6 +3,7 @@
 #pragma pack()
 typedef struct mips1_s {
     uint32_t gp_regs[32];
+    uint32_t cop_regs[4][32];
     union {
        uint32_t sr;
        struct {

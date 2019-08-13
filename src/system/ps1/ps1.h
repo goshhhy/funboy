@@ -1,0 +1,1 @@
+busDevice_t *Ps1IoMap( void );

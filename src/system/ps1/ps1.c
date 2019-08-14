@@ -3,7 +3,10 @@
 #include <stdbool.h>
 #include <string.h>
 
+
+#include "../../version.h"
 #include "../../device/device.h"
+#include "../../cpu/mips1/mips1.h"
 
 busDevice_t *Ps1IoMap( void ) {
     busDevice_t *iomap = GenericBus( "iomap" );

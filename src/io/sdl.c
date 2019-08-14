@@ -1,203 +1,114 @@
-/* this code was ripped from an old project and should probably be cleaned up later */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
+#include <stdbool.h>
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_mixer.h>
+
+
 
 #include "io.h"
 
-SDL_Window 	*window;
-SDL_Surface *wsurface;
-SDL_Surface *rsurface;
-SDL_Surface *pixel;
+SDL_Window* window = NULL;
+SDL_Surface* windowSurf = NULL;
+SDL_Surface* renderSurf = NULL;
+SDL_Surface* pixelSurf = NULL;
 
-Mix_Chunk *music = NULL;
-Mix_Chunk *sfx = NULL;
+int renderScale = 4;
+int useScanLines = 1;
 
-int ticks;
+int renderWidth, renderHeight;
 
-int renderWidth = 640;
-int renderHeight = 480;
+int* screen = NULL;
 
-/* SDL stuff */
-void IO_Deinit( void ) {
-	SDL_DestroyWindow( window );
-	window = NULL;
-	wsurface = NULL;
-	SDL_FreeSurface( rsurface );
-	rsurface = NULL;
-	SDL_Quit();
-	printf( "SDL backend deinitialized\n" );
+void IO_SetRenderRes( int x, int y ) {
+	renderWidth = x;
+	renderHeight = y;
+
+	if ( screen )
+		free( screen );
+
+	screen = malloc( ( x * y * sizeof( int ) * 3 ) * 2 );
+
+	if ( screen == NULL ) {
+		fprintf( stderr, "failed to alloc screen memory\n" );
+		exit( 1 ); 
+	}
 }
 
-void InitRenderSurface( void ) {
-	if ( rsurface ) 
-		SDL_FreeSurface( rsurface );
-
-	rsurface = SDL_CreateRGBSurface( 0, renderWidth, renderHeight, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000 );
-	if ( !rsurface )
-		fprintf( stderr, "Couldn't create SDL2 render surface: %s", SDL_GetError() );
-}
-
-int IO_Init( void ) {
-	atexit( IO_Deinit );
-	
-	if( SDL_Init( SDL_INIT_VIDEO ) != 0 ) {
-		fprintf( stderr, "Couldn't initialize SDL2: %s", SDL_GetError() );
-        return 1;
-    }
-
-	window = SDL_CreateWindow( "videospy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 960, 540, 0 );
+int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight ) {
+	window = SDL_CreateWindow( "kutaragi!", -1, -1, wWidth, wHeight, SDL_WINDOW_RESIZABLE );
 	if ( !window ) {
-		fprintf( stderr, "Couldn't create SDL2 window: %s", SDL_GetError() );
-        return 1;
-    }
+		printf( "failed to create window\n" );
+		return 1;
+	}
 
-	wsurface = SDL_GetWindowSurface( window );
-	if ( !wsurface ) {
-		fprintf( stderr, "Couldn't get SDL2 window surface: %s", SDL_GetError() );
-        return 1;
-    }
-	InitRenderSurface();
+	IO_SetRenderRes( rWidth, rHeight );
 
-	pixel = SDL_CreateRGBSurface( 0, 1, 1, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000 );
-	if ( !rsurface ) {
-		fprintf( stderr, "Couldn't create SDL2 pixel surface: %s", SDL_GetError() );
-        return 1;
-    }
+	windowSurf = SDL_GetWindowSurface( window );
+	renderSurf = SDL_CreateRGBSurface( 0, rWidth * renderScale, rHeight * renderScale, 32, 0xFF, 0xFF << 8, 0xFF << 16, 0xFF << 24 );
+	pixelSurf = SDL_CreateRGBSurface( 0, 1 * renderScale, 1 * renderScale, 32, 0xFF, 0xFF << 8, 0xFF << 16, 0xFF << 24 );
 
-	IO_ClearScreen();
-	IO_Flush();
-
-	printf( "SDL backend initialized\n" );
+	SDL_FillRect( windowSurf, NULL, SDL_MapRGB( windowSurf->format, 0x00, 0x00, 0x00 ) );
+	SDL_FillRect( renderSurf, NULL, SDL_MapRGB( renderSurf->format, 0x00, 0x00, 0x22 ) );
+	SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, 0x00, 0x00, 0x00 ) );
+	SDL_UpdateWindowSurface( window );
 
 	return 0;
 }
- 
-void IO_StartTick( void ) {
+
+void IO_DrawPixel( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {
+	screen[(renderWidth * y * 3) + (x * 3) + 0] = r;
+	screen[(renderWidth * y * 3) + (x * 3) + 1] = g;
+	screen[(renderWidth * y * 3) + (x * 3) + 2] = b;
+}
+
+void IO_ScreenCopy( void ) {
+	int x, y, r, g, b;
+
+	for( y = 0; y < renderHeight; y++ ) {
+		for ( x = 0; x < renderWidth; x++ ) {
+			r = screen[(renderWidth * y * 3) + (x * 3) + 0];
+			g = screen[(renderWidth * y * 3) + (x * 3) + 1];
+			b = screen[(renderWidth * y * 3) + (x * 3) + 2];
+
+			SDL_Rect dim = { 0, 0, 1 * renderScale, 1 * renderScale };
+			
+			dim.x = x * renderScale;
+			dim.y = y * renderScale;
+			SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, r, g, b ) );
+			SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim );
+			if ( useScanLines ) {
+				SDL_Rect dim2 = { 0, 0, 1 * renderScale, 1 * renderScale / 2 };
+				dim2.x = x * renderScale;
+				dim2.y = y * renderScale + (renderScale / 2);
+				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, r * 0.85, g * 0.85, b * 0.85 ) );
+				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim2 );
+			}
+		}
+	}
+}
+
+bool IO_Update( void ) {
 	SDL_Event e;
+	static int updates = 0;
+	bool r = true;
+
+	printf( "begin video update %i\n", updates++ );
+	IO_ScreenCopy();
+	
+	if ( SDL_BlitScaled( renderSurf, NULL, windowSurf, NULL ) )	
+		fprintf( stderr, "update: scale failed: %s", SDL_GetError() );
+
+	SDL_UpdateWindowSurface( window );
 	while ( SDL_PollEvent( &e ) != 0 ) {
 		switch( e.type ) {
 			case SDL_QUIT:
-				exit(0);
+				r = false;
+				break;
+			case SDL_WINDOWEVENT_RESIZED:
+				windowSurf = SDL_GetWindowSurface( window );
 				break;
 			default:
 				break;
 		}
 	}
-	ticks = SDL_GetTicks();
-}
-
-void IO_EndTick( void ) {
-	int endTicks = SDL_GetTicks();
-	if ( endTicks - ticks < 16 ) {
-		SDL_Delay( 16 - ( endTicks - ticks ) );
-	}
-}
-
-void IO_ClearScreen( void ) {
-	SDL_FillRect( rsurface, NULL, SDL_MapRGB( rsurface->format, 0, 0, 0 ) );
-}
-
-void IO_Flush( void ) {
-	if ( SDL_BlitScaled( rsurface, NULL, wsurface, NULL ) )
-		fprintf( stderr, "Flush: Scale failed: %s", SDL_GetError() );
-	if ( SDL_UpdateWindowSurface( window ) ) {
-		fprintf( stderr, "Flush: Update failed: %s", SDL_GetError() );
-		printf( "Reloading window surface\n\n" );
-		wsurface = SDL_GetWindowSurface( window );
-		if ( !wsurface )
-			fprintf( stderr, "Couldn't get SDL2 window surface: %s", SDL_GetError() );
-	}
-}
-
-void IO_SetRenderResolution( int width, int height ) {
-	renderWidth = width;
-	renderHeight = height;
-	InitRenderSurface();
-}
-
-int IO_GetRenderWidth( void ) {
-	return renderWidth;
-}
-
-int IO_GetRenderHeight( void ) {
-	return renderHeight;
-}
-
-void DrawPixel( short x, short y, short r, short g, short b ) {
-    SDL_Rect srcrect;
-	SDL_Rect dstrect;
-
-    srcrect.x = 0;
-	srcrect.y = 0;
-    dstrect.x = x;
-	dstrect.y = y;
-    srcrect.w = dstrect.w = 1;
-    srcrect.h = dstrect.h = 1;
-
-    SDL_FillRect( pixel, NULL, SDL_MapRGB(pixel->format, r, g, b) );
-    SDL_BlitSurface( pixel, &srcrect, rsurface, &dstrect );
-}
-
-void IO_DrawLine( short x1, short y1,  short x2, short y2, short r, short g, short b ) {
-	SDL_Rect srcrect;
-	SDL_Rect dstrect;
-	float xt, yt;
-	float dx;
-	float dy;
-	float derr;
-	float err;
-
-	if ( x2 < x1 ) {
-		xt = x2;
-		x2 = x1;
-		x1 = xt;
-	}
-	if ( y2 < y1 ) {
-		yt = y2;
-		y2 = y1;
-		y1 = yt;
-	}
-
-	SDL_FillRect( pixel, NULL, SDL_MapRGB(pixel->format, r, g, b) );
-	srcrect.x = 0;
-	srcrect.y = 0;
-	dstrect.w = srcrect.w = 1;
-	dstrect.h = srcrect.h = 1;
-
-	dx = x2 - x1;
-	if ( dx == 0 ) {
-		for( ; y1 < y2; y1++ ) {
-			dstrect.x = x1;
-			dstrect.y = y1;
-			SDL_BlitSurface( pixel, &srcrect, rsurface, &dstrect );
-		}
-	} else {
-		dy = y2 - y1;
-		derr = fabs( dy / dx );
-		err = derr - 0.5f;
-
-		for ( ; x1 < x2; x1++ ) {
-				dstrect.x = x1;
-				dstrect.y = y1;
-				SDL_BlitSurface( pixel, &srcrect, rsurface, &dstrect );
-				err = err + derr;
-				if ( err >= 0.5f ) {
-					y1++;
-					err = err - 1.0f;
-				}
-		}
-	}
-}
-
-void IO_DrawFill( short x1, short y1,  short x2, short y2, short r, short g, short b ) {
-	for( ; x1 != x2; x1 < x2 ? x1++ : x1-- ) {
-		IO_DrawLine( x1, y1, x1, y2, r, g, b );
-	}
+	return r;
 }

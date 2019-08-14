@@ -8,7 +8,7 @@
 #include "../../cpu/lr35902/lr35902.h"
 
 int main( int argc, char **argv ) {
-    printf( "kutaragi! v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
+    printf( "kutaragi!gb v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
 
     busDevice_t *gbbus = GenericBus( "gb" );
 

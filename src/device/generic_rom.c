@@ -19,7 +19,7 @@ static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr, bool final ) {
     rom = dev->data;
 
     if ( addr > rom->len ) {
-        fprintf( stderr, "warning: GenericRomRead: address out of bounds\n" );
+        fprintf( stderr, "warning: GenericRomRead: address out of bounds [%s:%04x]\n", rom->name, addr );
         return 0;
     }
     return rom->bytes[addr];

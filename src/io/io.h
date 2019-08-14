@@ -1,11 +1,4 @@
-int IO_Init( void );
-void IO_Deinit( void );
-void IO_StartTick( void );
-void IO_EndTick( void );
-void IO_ClearScreen( void );
-void IO_Flush( void );
-void IO_SetRenderResolution( int width, int height );
-int IO_GetRenderWidth( void );
-int IO_GetRenderHeight( void );
-void IO_DrawPixel( short x, short y, short r, short g, short b );
-void IO_DrawFill( short x1, short y1,  short x2, short y2, short r, short g, short b );
+int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight );
+bool IO_Update( void );
+void IO_SetRenderRes( int x, int y );
+void IO_DrawPixel( int x, int y, uint8_t r, uint8_t g, uint8_t b );

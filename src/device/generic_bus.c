@@ -17,6 +17,7 @@ typedef struct busMapping_s {
 typedef struct busInfo_s {
     char *name;
     busMapping_t mappings[MAX_MAPPINGS];
+    char emptyVal;
 } busInfo_t;
 
 static busMapping_t* GetTargetBusMapping( busInfo_t* bus, uint32_t addr ) {
@@ -24,14 +25,14 @@ static busMapping_t* GetTargetBusMapping( busInfo_t* bus, uint32_t addr ) {
         if ( bus->mappings[i].device ) {
             if ( addr >= bus->mappings[i].addr_start ) {
                 if ( addr <= bus->mappings[i].addr_end ) {
-                    //printf( "forwarding access to device %s\n", bus->mappings[i].name );
+                    //printf( "bus %s forwarding access at %04x to device %s\n", bus->name, addr, bus->mappings[i].name );
                     return &bus->mappings[i];
                 }
             }
         }
     }
     printf( "no device found for access (offset %08x)\n", addr );
-    exit( 1 );
+    //exit( 1 );
     return NULL;
 }
 
@@ -45,7 +46,7 @@ static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr, bool final ) {
 
     mapping = GetTargetBusMapping( bus, addr );
     if ( !mapping || mapping->device == dev )
-        return 0xFF;
+        return bus->emptyVal;
     return mapping->device->Read8( mapping->device, addr - mapping->addr_start, final );
 }
 
@@ -61,6 +62,16 @@ static void GenericBusWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
     if ( !mapping || mapping->device == dev )
         return;
     mapping->device->Write8( mapping->device, addr - mapping->addr_start, val, final );
+}
+
+void GenericBusSetEmptyVal( busDevice_t *dev, uint8_t val ) {
+    busInfo_t *bus;
+    busMapping_t *mapping;
+
+    if ( !dev || !dev->data )
+        return;
+    bus = dev->data;
+    bus->emptyVal = val;
 }
 
 void GenericBusMapping( busDevice_t *dev, char* name, uint32_t addr_start, uint32_t addr_end, busDevice_t *subdev ) {

@@ -203,7 +203,7 @@ busDevice_t *Ps1IoMap( void ) {
 }
 
 int main( int argc, char **argv ) {
-    printf( "kutaragi! v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
+    printf( "kutaragi!ps1 v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
 
     busDevice_t *ps1bus = GenericBus( "ps1" );
     busDevice_t *iomap = Ps1IoMap();

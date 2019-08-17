@@ -127,13 +127,13 @@ static void cp( lr35902_t *cpu ) {
 static void inc( lr35902_t *cpu ) {
     uint8_t in = read_r( cpu, cpu->op.y ), res = in + 1;
     SetFlags( cpu, res == 0, 1, ( res & 0xf ) < ( in & 0xf), cpu->fc );
-    write_r( cpu, in, cpu->op.y );
+    write_r( cpu, res, cpu->op.y );
 }
 
 static void dec( lr35902_t *cpu ) {
     uint8_t in = read_r( cpu, cpu->op.y ), res = in - 1;
     SetFlags( cpu, res == 0, 1, ( res & 0x0f ) > ( in & 0x0f), cpu->fc );
-    write_r( cpu, in, cpu->op.y );
+    write_r( cpu, res, cpu->op.y );
 }
 
 static void in16( lr35902_t *cpu ) {

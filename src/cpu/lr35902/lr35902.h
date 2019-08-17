@@ -4,26 +4,26 @@
 typedef struct lr35902_instruction_s {
     union {
         struct {
-            uint8_t b7:1;
-            uint8_t b6:1;
-            uint8_t b5:1;
-            uint8_t b4:1;
-            uint8_t b3:1;
-            uint8_t b2:1;
-            uint8_t b1:1;
             uint8_t b0:1;
+            uint8_t b1:1;
+            uint8_t b2:1;
+            uint8_t b3:1;
+            uint8_t b4:1;
+            uint8_t b5:1;
+            uint8_t b6:1;
+            uint8_t b7:1;
         };
         struct {
+            uint8_t z:3;
+			uint8_t y:3;
             uint8_t x:2;
-            union {
-				uint8_t y:3;
-				struct {
-					uint8_t p:2;
-					uint8_t q:1;
-				};
-			};
-            uint8_t z:2;
         };
+		struct {
+			uint8_t z2:3;
+			uint8_t q:1;
+			uint8_t p:2;
+			uint8_t x2:2;
+		};
         uint8_t full;
     };
 } lr35902_instruction_t;

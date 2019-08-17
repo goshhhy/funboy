@@ -27,6 +27,20 @@ static void nop( lr35902_t *cpu ) {
     cpu->pc++;
 }
 
+void SetFlags( lr35902_t *cpu, uint8_t z, uint8_t n, uint8_t h, uint8_t c ) {
+    cpu->fz = z;
+    cpu->fn = n;
+    cpu->fh = h;
+    cpu->fc = c;
+}
+
+bool NzNc( lr35902_t *cpu ) {
+    bool cond = ( ( ( cpu->op.p & 1 ) == 0 ) ? cpu->fz : cpu->fc );
+    return ( cpu->op.q == 0 ) ? !cond : cond;
+}
+
+// REGISTER READ/WRITES
+
 static uint8_t read_r( lr35902_t *cpu, uint8_t r ) {
     uint8_t *ri[8] = {&cpu->b, &cpu->c,  &cpu->d,  &cpu->e,  &cpu->h,  &cpu->l, NULL,  &cpu->a };
     return r == LD_MODE_HL ? read8( cpu, cpu->hl, true ) : *ri[r];
@@ -40,12 +54,34 @@ static void write_r( lr35902_t *cpu, uint8_t val, uint8_t r ) {
         *ri[r] = val;
 }
 
+static uint16_t read_rp( lr35902_t *cpu, uint8_t r ) {
+    uint16_t *ri[4] = {&cpu->bc, &cpu->de,  &cpu->hl,  &cpu->sp };
+    return *ri[r];
+}
+
+static void write_rp( lr35902_t *cpu, uint16_t val, uint8_t r ) {
+    uint16_t *ri[4] = {&cpu->bc, &cpu->de,  &cpu->hl,  &cpu->sp };
+    *ri[r] = val;
+}
+
+static uint16_t read_rp2( lr35902_t *cpu, uint8_t r ) {
+    uint16_t *ri[4] = {&cpu->bc, &cpu->de,  &cpu->hl,  &cpu->af };
+    return *ri[r];
+}
+
+static void write_rp2( lr35902_t *cpu, uint16_t val, uint8_t r ) {
+    uint16_t *ri[4] = {&cpu->bc, &cpu->de,  &cpu->hl,  &cpu->af };
+    *ri[r] = val;
+}
+
+// OPCODES
+
 static void ld( lr35902_t *cpu ) {
     write_r( cpu, read_r( cpu, cpu->op.z ), cpu->op.y );
 }
 
 static void ldd8( lr35902_t *cpu ) {
-    write_r( cpu, read8( cpu, cpu->pc++, false ), cpu->op.y );
+    write_r( cpu, read8( cpu, cpu->pc++ + 1, false ), cpu->op.y );
 }
 
 static void add( lr35902_t *cpu ) {
@@ -89,13 +125,15 @@ static void cp( lr35902_t *cpu ) {
 }
 
 static void inc( lr35902_t *cpu ) {
-    printf( "inc unimplemented\n" );
-    exit(1);
+    uint8_t in = read_r( cpu, cpu->op.y ), res = in + 1;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) < ( in & 0xf), cpu->fc );
+    write_r( cpu, in, cpu->op.y );
 }
 
 static void dec( lr35902_t *cpu ) {
-    printf( "dec unimplemented\n" );
-    exit(1);
+    uint8_t in = read_r( cpu, cpu->op.y ), res = in - 1;
+    SetFlags( cpu, res == 0, 1, ( res & 0x0f ) > ( in & 0x0f), cpu->fc );
+    write_r( cpu, in, cpu->op.y );
 }
 
 static void in16( lr35902_t *cpu ) {
@@ -109,13 +147,12 @@ static void de16( lr35902_t *cpu ) {
 }
 
 static void ld16( lr35902_t *cpu ) {
-    printf( "ld16 unimplemented\n" );
-    exit(1);
+    write_rp( cpu, read16( cpu, ( cpu->pc+1 ), true ), cpu->op.p );
+    cpu->pc+=2;
 }
 
 static void li16( lr35902_t *cpu ) {
-    printf( "li16 unimplemented\n" );
-    exit(1);
+    write8( cpu, cpu->op.p < 2 ? read_rp( cpu, cpu->op.p ) : ( cpu->op.p == 2 ? cpu->hl++ : cpu->hl-- ), cpu->a, true );
 }
 
 static void add16( lr35902_t *cpu ) {
@@ -132,6 +169,13 @@ static void jp( lr35902_t* cpu ) {
     uint16_t dest = read16( cpu, cpu->pc + 1, true );
     printf( "jump to %04x\n", dest );
     cpu->pc = dest - 1;
+}
+
+static void jrx( lr35902_t* cpu ) {
+    uint16_t dest = cpu->pc + (int8_t)read8( cpu, cpu->pc + 1, true );
+    if ( NzNc( cpu ) )
+        cpu->pc = dest;
+    cpu->pc++;
 }
 
 static void hlt( lr35902_t *cpu ) {
@@ -159,6 +203,11 @@ static void edi( lr35902_t *cpu ) {
     exit(1);
 }
 
+static void stop( lr35902_t *cpu ) {
+    printf( "stop unimplemented\n" );
+    exit(1);
+}
+
 static void bad( lr35902_t *cpu ) {
     printf( "bad instruction %02x\n", cpu->op.full );
     exit( 1 );
@@ -166,9 +215,9 @@ static void bad( lr35902_t *cpu ) {
 
 void (*ops[256])( lr35902_t* cpu ) = {
     nop,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
-    bad,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
-    bad,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
-    bad,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
+    stop, ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
+    jrx,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
+    jrx,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
 
     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,  
     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,  

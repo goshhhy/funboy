@@ -26,6 +26,7 @@ static uint8_t GenericRegisterRead( busDevice_t *dev, uint32_t addr, bool final 
     if ( reg->data ) {
         return reg->data[addr];
     }
+    return 0;
 }
 
 
@@ -65,6 +66,9 @@ busDevice_t *GenericRegister( char *name, uint32_t *data, size_t len, uint8_t (*
     if ( !( dev = malloc( sizeof( busDevice_t ) ) ) || !( reg = malloc( sizeof( regInfo_t ) ) ) ) {
         fprintf( stderr, "couldn't allocate ram\n" );
         return NULL;
+    }
+    if ( !data ) {
+        data = malloc( sizeof( uint32_t ) );
     }
     reg->name = name;
     reg->len = len;

@@ -10,11 +10,7 @@
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
 void MapGbRegs( busDevice_t* gbbus ) {
-
     REGISTER( gbbus, "JoyIn",           0xFF00, 1 );
-
-    REGISTER( gbbus, "SerDat",          0xFF01, 1 );
-    REGISTER( gbbus, "SerTxCtl",        0xFF02, 1 );
 
     REGISTER( gbbus, "TmrDiv",          0xFF04, 1 );
     REGISTER( gbbus, "TmrCtr",          0xFF05, 1 );

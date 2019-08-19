@@ -1,4 +1,5 @@
-
+/* please dont use this code as a "good example" of anything 
+ * most people will probably hate it, i know */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -84,23 +85,27 @@ static void ldd8( lr35902_t *cpu ) {
 }
 
 static void add( lr35902_t *cpu ) {
-    printf( "add unimplemented\n" );
-    exit(1);
+    uint8_t other = ( cpu->op.x == 3 ) ? read8( cpu, ++cpu->pc, true ) : read_r( cpu, cpu->op.z );
+    uint8_t orig = cpu->a, res = cpu->a = cpu->a + other;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( orig & 0xf ), res < orig );
 }
 
 static void adc( lr35902_t *cpu ) {
-    printf( "adc unimplemented\n" );
-    exit(1);
+    uint8_t other = ( cpu->op.x == 3 ) ? read8( cpu, ++cpu->pc, true ) : read_r( cpu, cpu->op.z );
+    uint8_t orig = cpu->a, res = cpu->a = cpu->a + other + cpu->fc;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( orig & 0xf ), res < orig );
 }
 
 static void sub( lr35902_t *cpu ) {
-    printf( "sub unimplemented\n" );
-    exit(1);
+    uint8_t other = ( cpu->op.x == 3 ) ? read8( cpu, ++cpu->pc, true ) : read_r( cpu, cpu->op.z );
+    uint8_t orig = cpu->a, res = cpu->a = cpu->a - other;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) > ( orig & 0xf ), res > orig );
 }
 
 static void sbc( lr35902_t *cpu ) {
-    printf( "sbc unimplemented\n" );
-    exit(1);
+    uint8_t other = ( cpu->op.x == 3 ) ? read8( cpu, ++cpu->pc, true ) : read_r( cpu, cpu->op.z );
+    uint8_t orig = cpu->a, res = cpu->a = ( cpu->a - other ) - cpu->fc;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) > ( orig & 0xf ), res > orig );
 }
 
 static void and( lr35902_t *cpu ) {
@@ -124,6 +129,11 @@ static void cp( lr35902_t *cpu ) {
     SetFlags( cpu, ( res == 0 ), 1, ( res & 0x0f ) > ( cpu->a & 0x0f ), ( res ) > ( cpu->a ) );
 }
 
+static void cpl( lr35902_t *cpu ) {
+    cpu->a = ~cpu->a;
+    SetFlags( cpu, cpu->fz, 1, 1, cpu->fc );
+}
+
 static void inc( lr35902_t *cpu ) {
     uint8_t in = read_r( cpu, cpu->op.y ), res = in + 1;
     SetFlags( cpu, res == 0, 1, ( res & 0xf ) < ( in & 0xf), cpu->fc );
@@ -134,6 +144,52 @@ static void dec( lr35902_t *cpu ) {
     uint8_t in = read_r( cpu, cpu->op.y ), res = in - 1;
     SetFlags( cpu, res == 0, 1, ( res & 0x0f ) > ( in & 0x0f), cpu->fc );
     write_r( cpu, res, cpu->op.y );
+}
+
+static void ccf( lr35902_t *cpu ) {
+    cpu->fc = 0;
+}
+
+static void scf( lr35902_t *cpu ) {
+    cpu->fc = 1;
+}
+
+static void daa( lr35902_t *cpu ) {
+    bool carry = 0;
+    if ( cpu->fn ) {
+        cpu->a = ( cpu->a - ( cpu->fc ? 0x60 : 0 ) ) - ( cpu->fh ? 0x6 : 0 );
+    } else {
+        if ( cpu->fc || ( cpu->a > 0x99 ) ) {
+            cpu->a += 0x60;
+            carry = 1;
+        }
+        if ( cpu->fh || ( ( cpu->a & 0xf ) < 0x9 ) ) {
+            cpu->a += 0x6;
+        }
+    }
+    SetFlags( cpu, cpu->a == 0, cpu->fn, 0, carry );
+}
+
+static void rlca( lr35902_t *cpu ) {
+    SetFlags( cpu, 0, 0, 0, ( cpu->a & 0x80 ) >> 7 );
+    cpu->a = ( cpu->a << 1 ) + cpu->fc;
+}
+
+static void rla( lr35902_t *cpu ) {
+    uint8_t newc = ( cpu->a & 0x80 ) >> 7;
+    cpu->a = ( cpu->a << 1 ) + cpu->fc;
+    SetFlags( cpu, 0, 0, 0, newc );
+}
+
+static void rrca( lr35902_t *cpu ) {
+    SetFlags( cpu, 0, 0, 0, ( cpu->a & 0x01 ) );
+    cpu->a = cpu->a >> 1;
+}
+
+static void rra( lr35902_t *cpu ) {
+    uint8_t newc = ( cpu->a & 0x01 );
+    cpu->a = ( cpu->a >> 1 ) + ( cpu->fc << 7 );
+    SetFlags( cpu, 0, 0, 0, newc );
 }
 
 static void in16( lr35902_t *cpu ) {
@@ -154,8 +210,7 @@ static void li16( lr35902_t *cpu ) {
 }
 
 static void add16( lr35902_t *cpu ) {
-    printf( "add16 unimplemented\n" );
-    exit(1);
+    cpu->hl = cpu->hl + read_rp( cpu, cpu->op.x );
 }
 
 static void la16( lr35902_t *cpu ) {
@@ -189,32 +244,57 @@ static uint16_t popw( lr35902_t* cpu ) {
 }
 
 static void call( lr35902_t* cpu ) {
-    pushw( cpu, cpu->pc + 1 );
+    pushw( cpu, cpu->pc + 2 );
     cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
+}
+
+static void callx( lr35902_t* cpu ) {
+    if ( NzNc( cpu ) ) {
+        pushw( cpu, cpu->pc + 2 );
+        cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
+    } else {
+        cpu += 2;
+    }
+}
+
+static void jpx( lr35902_t* cpu ) {
+    if ( NzNc( cpu ) ) {
+        cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
+    } else {
+        cpu += 2;
+    }
 }
 
 static void ret( lr35902_t* cpu ) {
     cpu->pc = popw( cpu );
 }
 
+static void reti( lr35902_t* cpu ) {
+    cpu->pc = popw( cpu );
+    cpu->ifl = 1;
+}
+
+static void retx( lr35902_t* cpu ) {
+    if ( NzNc( cpu ) ) {
+        cpu->pc = popw( cpu );
+    }
+}
+
 static void hlt( lr35902_t *cpu ) {
-    printf( "hlt unimplemented\n" );
-    exit(1);
+    cpu->halted = true;
 }
 
 static void rst( lr35902_t *cpu ) {
-    printf( "rst unimplemented\n" );
-    exit(1);
+    pushw( cpu, cpu->pc + 2 );
+    cpu->pc = cpu->op.y << 3;
 }
 
 static void pop( lr35902_t *cpu ) {
-    printf( "pop unimplemented\n" );
-    exit(1);
+    write_rp2( cpu, popw( cpu ), cpu->op.x );
 }
 
 static void psh( lr35902_t *cpu ) {
-    printf( "psh unimplemented\n" );
-    exit(1);
+    pushw( cpu, read_rp2( cpu, cpu->op.x ) );
 }
 
 static void edi( lr35902_t *cpu ) {
@@ -222,8 +302,7 @@ static void edi( lr35902_t *cpu ) {
 }
 
 static void stop( lr35902_t *cpu ) {
-    printf( "stop unimplemented\n" );
-    exit(1);
+    hlt( cpu );
 }
 
 static void e0( lr35902_t *cpu ) {
@@ -252,16 +331,48 @@ static void fa( lr35902_t *cpu ) {
     cpu->pc+=2;
 }
 
+static void addsp( lr35902_t *cpu ) {
+    uint16_t oldsp = cpu->sp;
+    uint8_t val = (int8_t)read8( cpu, cpu->pc++, true );
+    cpu->sp = cpu->sp + val;
+    if ( val < 0 )
+        SetFlags( cpu, 0, 0, ( oldsp & 0xf ) > ( cpu->sp & 0xf ), ( oldsp & 0xff ) > ( cpu->sp & 0xff ) );
+    else
+        SetFlags( cpu, 0, 0, ( oldsp & 0xf ) < ( cpu->sp & 0xf ), ( oldsp & 0xff ) < ( cpu->sp & 0xff ) );
+}
+
+static void jphl( lr35902_t *cpu ) {
+    cpu->pc = read16( cpu, read16( cpu, cpu->pc + 1, true ), true ) - 1;
+}
+
+static void lhlsi( lr35902_t *cpu ) {
+    uint8_t val = (int8_t)read8( cpu, cpu->pc++, true );
+    cpu->hl = cpu->sp + val;
+    if ( val < 0 )
+        SetFlags( cpu, 0, 0, ( cpu->sp & 0xf ) > ( cpu->hl & 0xf ), ( cpu->sp & 0xff ) > ( cpu->hl & 0xff ) );
+    else
+        SetFlags( cpu, 0, 0, ( cpu->sp & 0xf ) < ( cpu->hl & 0xf ), ( cpu->sp & 0xff ) < ( cpu->hl & 0xff ) );
+}
+
+static void lsphl( lr35902_t *cpu ) {
+    cpu->sp = cpu->hl;
+}
+
+static void cb( lr35902_t *cpu ) {
+    printf( "cb unimplemented\n" );
+    exit( 1 );
+}
+
 static void bad( lr35902_t *cpu ) {
     printf( "bad instruction %02x\n", cpu->op.full );
     exit( 1 );
 }
 
 void (*ops[256])( lr35902_t* cpu ) = {
-    nop,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     bad,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
-    stop, ld16, li16, in16,  inc,  dec,  ldd8, bad,     jr,   add16,la16, de16,   inc,  dec,  ldd8, bad, 
-    jrx,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     jrx,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
-    jrx,  ld16, li16, in16,  inc,  dec,  ldd8, bad,     jrx,  add16,la16, de16,   inc,  dec,  ldd8, bad, 
+    nop,  ld16, li16, in16,  inc,  dec,  ldd8, rlca,    bad,  add16,la16, de16,   inc,  dec,  ldd8, rrca, 
+    stop, ld16, li16, in16,  inc,  dec,  ldd8, rla,     jr,   add16,la16, de16,   inc,  dec,  ldd8, rra, 
+    jrx,  ld16, li16, in16,  inc,  dec,  ldd8, daa,     jrx,  add16,la16, de16,   inc,  dec,  ldd8, cpl, 
+    jrx,  ld16, li16, in16,  inc,  dec,  ldd8, scf,     jrx,  add16,la16, de16,   inc,  dec,  ldd8, ccf, 
 
     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,  
     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,     ld,   ld,   ld,   ld,  
@@ -273,13 +384,15 @@ void (*ops[256])( lr35902_t* cpu ) = {
     and,  and,  and,  and,    and,  and,  and,  and,    xor,  xor,  xor,  xor,    xor,  xor,  xor,  xor, 
     or,   or,   or,   or,     or,   or,   or,   or,     cp,   cp,   cp,   cp,     cp,   cp,   cp,   cp,  
 
-    bad,  pop,  bad,  jp,     bad,  psh,  add,  rst,    bad,  ret,  bad,  bad,    bad,  call, adc,  rst, 
-    bad,  pop,  bad,  bad,    bad,  psh,  sub,  rst,    bad,  bad,  bad,  bad,    bad,  bad,  sbc,  rst, 
-    e0,   pop,  e2,   bad,    bad,  psh,  and,  rst,    bad,  bad,  ea,   bad,    bad,  bad,  xor,  rst, 
-    f0,   pop,  f2,   edi,    bad,  psh,  or,   rst,    bad,  bad,  fa,   edi,    bad,  bad,  cp,   rst, 
+    retx, pop,  jpx,  jp,     callx,psh,  add,  rst,    retx, ret,  jpx,  cb,     callx,call, adc,  rst, 
+    retx, pop,  jpx,  bad,    callx,psh,  sub,  rst,    retx, reti, jpx,  bad,    callx,bad,  sbc,  rst, 
+    e0,   pop,  e2,   bad,    bad,  psh,  and,  rst,    addsp,jphl, ea,   bad,    bad,  bad,  xor,  rst, 
+    f0,   pop,  f2,   edi,    bad,  psh,  or,   rst,    lhlsi,lsphl,fa,   edi,    bad,  bad,  cp,   rst, 
 };
 
 static void Step( lr35902_t *cpu ) {
+    if ( cpu->halted )
+        return;
     cpu->op.full = cpu->bus->Read8( cpu->bus, cpu->pc, false );
     uint16_t imm16 = read16(cpu, cpu->pc+1, false);
     printf("[%04x] af:%04x bc:%04x de: %04x hl: %04x sp: %04x op: %02x imm16: %02x\n", cpu->pc, cpu->af, cpu->bc, cpu->de, cpu->hl, cpu->sp, cpu->op.full, imm16 );
@@ -295,6 +408,8 @@ static void Reset( lr35902_t *cpu ) {
     cpu->hl = 0x014d;
     cpu->sp = 0xfffe;
     cpu->pc = 0x0100;
+    cpu->ifl = 1;
+    cpu->halted = false;
 }
 
 lr35902_t *Lr35902( busDevice_t *bus ) {

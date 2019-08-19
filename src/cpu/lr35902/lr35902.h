@@ -51,6 +51,7 @@ typedef struct lr35902_s{
 	uint16_t sp;
 	uint16_t pc;
 	uint8_t ifl;
+	bool halted;
 	// internal state
 	lr35902_instruction_t op;
 	// external

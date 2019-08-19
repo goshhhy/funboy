@@ -85,10 +85,12 @@ int main( int argc, char **argv ) {
     busDevice_t* bgram = GenericRam( 0x800 );
     busDevice_t* oam = GenericRam( 0x9f );
     busDevice_t* rom = GenericRom( argv[1], 32 * 1024 );
+    busDevice_t* cartram = GenericRam( 0x2000 );
     
     GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
     GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );
     GenericBusMapping( gbbus, "bgram",   0x9800, 0x9fff, bgram );
+    GenericBusMapping( gbbus, "cartram", 0xa000, 0xbfff, ram );
     GenericBusMapping( gbbus, "ram",     0xc000, 0xdfff, ram );
     GenericBusMapping( gbbus, "echo",    0xe000, 0xfdff, ram );
     GenericBusMapping( gbbus, "oam",     0xfe00, 0xfe9f, oam );

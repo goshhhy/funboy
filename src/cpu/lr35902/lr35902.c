@@ -338,9 +338,9 @@ static void addsp( lr35902_t *cpu ) {
     uint8_t val = (int8_t)read8( cpu, cpu->pc++, true );
     cpu->sp = cpu->sp + val;
     if ( val < 0 )
-        SetFlags( cpu, 0, 0, ( oldsp & 0xf ) > ( cpu->sp & 0xf ), ( oldsp & 0xff ) > ( cpu->sp & 0xff ) );
+        SetFlags( cpu, 0, 0, ( oldsp & 0xfff ) > ( cpu->sp & 0xfff ), ( oldsp & 0xffff ) > ( cpu->sp & 0xffff ) );
     else
-        SetFlags( cpu, 0, 0, ( oldsp & 0xf ) < ( cpu->sp & 0xf ), ( oldsp & 0xff ) < ( cpu->sp & 0xff ) );
+        SetFlags( cpu, 0, 0, ( oldsp & 0xfff ) < ( cpu->sp & 0xfff ), ( oldsp & 0xffff ) < ( cpu->sp & 0xffff ) );
 }
 
 static void jphl( lr35902_t *cpu ) {
@@ -351,9 +351,9 @@ static void lhlsi( lr35902_t *cpu ) {
     uint8_t val = (int8_t)read8( cpu, cpu->pc++, true );
     cpu->hl = cpu->sp + val;
     if ( val < 0 )
-        SetFlags( cpu, 0, 0, ( cpu->sp & 0xf ) > ( cpu->hl & 0xf ), ( cpu->sp & 0xff ) > ( cpu->hl & 0xff ) );
+        SetFlags( cpu, 0, 0, ( cpu->sp & 0xfff ) > ( cpu->hl & 0xfff ), ( cpu->sp & 0xffff ) > ( cpu->hl & 0xffff ) );
     else
-        SetFlags( cpu, 0, 0, ( cpu->sp & 0xf ) < ( cpu->hl & 0xf ), ( cpu->sp & 0xff ) < ( cpu->hl & 0xff ) );
+        SetFlags( cpu, 0, 0, ( cpu->sp & 0xfff ) < ( cpu->hl & 0xfff ), ( cpu->sp & 0xffff ) < ( cpu->hl & 0xffff ) );
 }
 
 static void l16sp( lr35902_t *cpu ) {
@@ -366,7 +366,7 @@ static void lsphl( lr35902_t *cpu ) {
 }
 
 static void rlc( lr35902_t *cpu ) {
-    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( cpu->a & 0x80 ) >> 7, out = ( in << 1 ) | newc;
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( in & 0x80 ) >> 7, out = ( in << 1 ) | newc;
     write_r( cpu, out, cpu->op.z );
     SetFlags( cpu, out == 0, 0, 0, newc );
 }
@@ -378,7 +378,7 @@ static void rrc( lr35902_t *cpu ) {
 }
 
 static void rl( lr35902_t *cpu ) {
-    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( cpu->a & 0x80 ) >> 7, out = ( in << 1 ) | cpu->fc;
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( in & 0x80 ) >> 7, out = ( in << 1 ) | cpu->fc;
     write_r( cpu, out, cpu->op.z );
     SetFlags( cpu, out == 0, 0, 0, newc );
 }
@@ -390,7 +390,7 @@ static void rr( lr35902_t *cpu ) {
 }
 
 static void sla( lr35902_t *cpu ) {
-    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( in & 0x8 ) >> 7, out = ( in << 1 );
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( in & 0x80 ) >> 7, out = ( in << 1 ) & 0xFE;
     write_r( cpu, out, cpu->op.z );
     SetFlags( cpu, out == 0, 0, 0, newc );
 }
@@ -398,7 +398,7 @@ static void sla( lr35902_t *cpu ) {
 static void sra( lr35902_t *cpu ) {
     uint8_t in = read_r( cpu, cpu->op.z ), newc = in & 0x1, out = ( in >> 1 ) | ( ( in & 0x80 ) );
     write_r( cpu, out, cpu->op.z );
-    SetFlags( cpu, cpu->a == 0, 0, 0, newc );
+    SetFlags( cpu, out == 0, 0, 0, newc );
 }
 
 static void swap( lr35902_t *cpu ) {
@@ -408,9 +408,9 @@ static void swap( lr35902_t *cpu ) {
 }
 
 static void srl( lr35902_t *cpu ) {
-    uint8_t in = read_r( cpu, cpu->op.z ), newc = in & 0x1, out = ( in >> 1 );
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = in & 0x1, out = ( in >> 1 ) & 0x7F;
     write_r( cpu, out, cpu->op.z );
-    SetFlags( cpu, cpu->a == 0, 0, 0, newc );
+    SetFlags( cpu, out == 0, 0, 0, newc );
 }
 
 static void bit( lr35902_t *cpu ) {

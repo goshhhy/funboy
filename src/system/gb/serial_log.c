@@ -7,6 +7,12 @@
 #include "../../device/device.h"
 #include "../../cpu/lr35902/lr35902.h"
 
+typedef struct regInfo_s {
+    char* name;
+    size_t len;
+    uint32_t* data;
+} regInfo_t;
+
 uint8_t datReg;
 
 static uint8_t SerialRegisterRead( busDevice_t *dev, uint32_t addr, bool final ) {

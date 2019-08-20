@@ -70,8 +70,8 @@ static uint16_t read_rp2( lr35902_t *cpu, uint8_t r ) {
 }
 
 static void write_rp2( lr35902_t *cpu, uint16_t val, uint8_t r ) {
-    uint16_t *ri[4] = {&cpu->bc, &cpu->de,  &cpu->hl,  &cpu->af };
-    *ri[r] = val;
+    uint16_t *ri[4] = {&cpu->bc, &cpu->de,  &cpu->hl, &cpu->af };
+    *ri[r] = val & ( r == 3 ? 0xFFF0 : 0xFFFF );
 }
 
 // OPCODES
@@ -93,19 +93,19 @@ static void add( lr35902_t *cpu ) {
 static void adc( lr35902_t *cpu ) {
     uint8_t other = ( cpu->op.x == 3 ) ? read8( cpu, ++cpu->pc, true ) : read_r( cpu, cpu->op.z );
     uint8_t orig = cpu->a, res = cpu->a = cpu->a + other + cpu->fc;
-    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( orig & 0xf ), res < orig );
+    SetFlags( cpu, res == 0, 0, ( other & 0xf ) + ( orig & 0xf ) + cpu->fc > 0xf, ((uint16_t)orig + (uint16_t)other + (uint16_t)cpu->fc) > 0xFF);
 }
 
 static void sub( lr35902_t *cpu ) {
     uint8_t other = ( cpu->op.x == 3 ) ? read8( cpu, ++cpu->pc, true ) : read_r( cpu, cpu->op.z );
     uint8_t orig = cpu->a, res = cpu->a = cpu->a - other;
-    SetFlags( cpu, res == 0, 0, ( res & 0xf ) > ( orig & 0xf ), res > orig );
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( orig & 0xf ), res > orig );
 }
 
 static void sbc( lr35902_t *cpu ) {
     uint8_t other = ( cpu->op.x == 3 ) ? read8( cpu, ++cpu->pc, true ) : read_r( cpu, cpu->op.z );
     uint8_t orig = cpu->a, res = cpu->a = ( cpu->a - other ) - cpu->fc;
-    SetFlags( cpu, res == 0, 0, ( res & 0xf ) > ( orig & 0xf ), res > orig );
+    SetFlags( cpu, res == 0, 1, (( other & 0xf ) + cpu->fc ) > ( orig & 0xf ), ((orig - other) - cpu->fc) < 0 );
 }
 
 static void and( lr35902_t *cpu ) {
@@ -136,7 +136,7 @@ static void cpl( lr35902_t *cpu ) {
 
 static void inc( lr35902_t *cpu ) {
     uint8_t in = read_r( cpu, cpu->op.y ), res = in + 1;
-    SetFlags( cpu, res == 0, 1, ( res & 0xf ) < ( in & 0xf), cpu->fc );
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf), cpu->fc );
     write_r( cpu, res, cpu->op.y );
 }
 
@@ -147,15 +147,15 @@ static void dec( lr35902_t *cpu ) {
 }
 
 static void ccf( lr35902_t *cpu ) {
-    cpu->fc = 0;
+    SetFlags( cpu, cpu->fz, 0, 0, cpu->fc ^ 1 );
 }
 
 static void scf( lr35902_t *cpu ) {
-    cpu->fc = 1;
+    SetFlags( cpu, cpu->fz, 0, 0, 1 );
 }
 
 static void daa( lr35902_t *cpu ) {
-    bool carry = 0;
+    bool carry = cpu->fc;
     if ( cpu->fn ) {
         cpu->a = ( cpu->a - ( cpu->fc ? 0x60 : 0 ) ) - ( cpu->fh ? 0x6 : 0 );
     } else {
@@ -163,7 +163,7 @@ static void daa( lr35902_t *cpu ) {
             cpu->a += 0x60;
             carry = 1;
         }
-        if ( cpu->fh || ( ( cpu->a & 0xf ) < 0x9 ) ) {
+        if ( cpu->fh || ( ( cpu->a & 0xf ) > 0x9 ) ) {
             cpu->a += 0x6;
         }
     }
@@ -183,7 +183,7 @@ static void rla( lr35902_t *cpu ) {
 
 static void rrca( lr35902_t *cpu ) {
     SetFlags( cpu, 0, 0, 0, ( cpu->a & 0x01 ) );
-    cpu->a = cpu->a >> 1;
+    cpu->a = ( cpu->a >> 1 ) | ( ( cpu->a & 0x01 ) << 7 );
 }
 
 static void rra( lr35902_t *cpu ) {
@@ -210,7 +210,9 @@ static void li16( lr35902_t *cpu ) {
 }
 
 static void add16( lr35902_t *cpu ) {
-    cpu->hl = cpu->hl + read_rp( cpu, cpu->op.x );
+    uint16_t oldhl = cpu->hl;
+    cpu->hl = cpu->hl + read_rp( cpu, cpu->op.p );
+    SetFlags( cpu, cpu->fz, 0, ( cpu->hl & 0xfff ) < ( oldhl & 0xfff ), ( cpu->hl & 0xffff ) < ( oldhl & 0xffff ) );
 }
 
 static void la16( lr35902_t *cpu ) {
@@ -244,16 +246,16 @@ static uint16_t popw( lr35902_t* cpu ) {
 }
 
 static void call( lr35902_t* cpu ) {
-    pushw( cpu, cpu->pc + 2 );
+    pushw( cpu, cpu->pc + 3 );
     cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
 }
 
 static void callx( lr35902_t* cpu ) {
     if ( NzNc( cpu ) ) {
-        pushw( cpu, cpu->pc + 2 );
+        pushw( cpu, cpu->pc + 3 );
         cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
     } else {
-        cpu += 2;
+        cpu->pc += 2;
     }
 }
 
@@ -261,22 +263,22 @@ static void jpx( lr35902_t* cpu ) {
     if ( NzNc( cpu ) ) {
         cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
     } else {
-        cpu += 2;
+        cpu->pc += 2;
     }
 }
 
 static void ret( lr35902_t* cpu ) {
-    cpu->pc = popw( cpu );
+    cpu->pc = popw( cpu ) - 1;
 }
 
 static void reti( lr35902_t* cpu ) {
-    cpu->pc = popw( cpu );
+    cpu->pc = popw( cpu ) - 1;
     cpu->ifl = 1;
 }
 
 static void retx( lr35902_t* cpu ) {
     if ( NzNc( cpu ) ) {
-        cpu->pc = popw( cpu );
+        cpu->pc = popw( cpu ) - 1;
     }
 }
 
@@ -290,11 +292,11 @@ static void rst( lr35902_t *cpu ) {
 }
 
 static void pop( lr35902_t *cpu ) {
-    write_rp2( cpu, popw( cpu ), cpu->op.x );
+    write_rp2( cpu, popw( cpu ), cpu->op.p );
 }
 
 static void psh( lr35902_t *cpu ) {
-    pushw( cpu, read_rp2( cpu, cpu->op.x ) );
+    pushw( cpu, read_rp2( cpu, cpu->op.p ) );
 }
 
 static void edi( lr35902_t *cpu ) {
@@ -342,7 +344,7 @@ static void addsp( lr35902_t *cpu ) {
 }
 
 static void jphl( lr35902_t *cpu ) {
-    cpu->pc = read16( cpu, read16( cpu, cpu->pc + 1, true ), true ) - 1;
+    cpu->pc = cpu->hl - 1;
 }
 
 static void lhlsi( lr35902_t *cpu ) {
@@ -354,13 +356,89 @@ static void lhlsi( lr35902_t *cpu ) {
         SetFlags( cpu, 0, 0, ( cpu->sp & 0xf ) < ( cpu->hl & 0xf ), ( cpu->sp & 0xff ) < ( cpu->hl & 0xff ) );
 }
 
+static void l16sp( lr35902_t *cpu ) {
+    cpu->sp = read16( cpu, cpu->pc+1, true );  
+    cpu->pc += 2;
+}
+
 static void lsphl( lr35902_t *cpu ) {
     cpu->sp = cpu->hl;
 }
 
-static void cb( lr35902_t *cpu ) {
-    printf( "cb unimplemented\n" );
+static void rlc( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( cpu->a & 0x80 ) >> 7, out = ( in << 1 ) | newc;
+    write_r( cpu, out, cpu->op.z );
+    SetFlags( cpu, out == 0, 0, 0, newc );
+}
+
+static void rrc( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = in & 0x1, out = ( in >> 1 ) | ( newc << 7 );
+    SetFlags( cpu, out == 0, 0, 0, newc );
+    write_r( cpu, out, cpu->op.z );
+}
+
+static void rl( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( cpu->a & 0x80 ) >> 7, out = ( in << 1 ) | cpu->fc;
+    write_r( cpu, out, cpu->op.z );
+    SetFlags( cpu, out == 0, 0, 0, newc );
+}
+
+static void rr( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = in & 0x1, out = ( in >> 1 ) | ( cpu->fc << 7 );
+    write_r( cpu, out, cpu->op.z );  
+    SetFlags( cpu, out == 0, 0, 0, newc );
+}
+
+static void sla( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = ( in & 0x8 ) >> 7, out = ( in << 1 );
+    write_r( cpu, out, cpu->op.z );
+    SetFlags( cpu, out == 0, 0, 0, newc );
+}
+
+static void sra( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = in & 0x1, out = ( in >> 1 ) | ( ( in & 0x80 ) );
+    write_r( cpu, out, cpu->op.z );
+    SetFlags( cpu, cpu->a == 0, 0, 0, newc );
+}
+
+static void swap( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), upper = in >> 4, lower = in & 0x0F, out = ( lower << 4 ) | upper;
+    write_r( cpu, out, cpu->op.z );
+    SetFlags( cpu, out == 0, 0, 0, 0 );
+}
+
+static void srl( lr35902_t *cpu ) {
+    uint8_t in = read_r( cpu, cpu->op.z ), newc = in & 0x1, out = ( in >> 1 );
+    write_r( cpu, out, cpu->op.z );
+    SetFlags( cpu, cpu->a == 0, 0, 0, newc );
+}
+
+static void bit( lr35902_t *cpu ) {
+    printf( "bit unimplemented\n" );
     exit( 1 );
+}
+
+static void res( lr35902_t *cpu ) {
+    printf( "res unimplemented\n" );
+    exit( 1 );
+}
+
+static void set( lr35902_t *cpu ) {
+    printf( "set unimplemented\n" );
+    exit( 1 );
+}
+
+void (*cbops[32])( lr35902_t* cpu ) = {
+    rlc, rrc, rl, rr, sla, sra, swap, srl,
+    bit, bit, bit, bit, bit, bit, bit, bit,
+    res, res, res, res, res, res, res, res,
+    set, set, set, set, set, set, set, set,
+};
+
+static void cb( lr35902_t *cpu ) {
+    cpu->pc++;
+    cpu->op.full = read8( cpu, cpu->pc, true );
+    cbops[( cpu->op.full & 0xF8 ) >> 3]( cpu );
 }
 
 static void bad( lr35902_t *cpu ) {
@@ -369,7 +447,7 @@ static void bad( lr35902_t *cpu ) {
 }
 
 void (*ops[256])( lr35902_t* cpu ) = {
-    nop,  ld16, li16, in16,  inc,  dec,  ldd8, rlca,    bad,  add16,la16, de16,   inc,  dec,  ldd8, rrca, 
+    nop,  ld16, li16, in16,  inc,  dec,  ldd8, rlca,    l16sp,add16,la16, de16,   inc,  dec,  ldd8, rrca, 
     stop, ld16, li16, in16,  inc,  dec,  ldd8, rla,     jr,   add16,la16, de16,   inc,  dec,  ldd8, rra, 
     jrx,  ld16, li16, in16,  inc,  dec,  ldd8, daa,     jrx,  add16,la16, de16,   inc,  dec,  ldd8, cpl, 
     jrx,  ld16, li16, in16,  inc,  dec,  ldd8, scf,     jrx,  add16,la16, de16,   inc,  dec,  ldd8, ccf, 
@@ -408,7 +486,6 @@ static void Reset( lr35902_t *cpu ) {
     cpu->hl = 0x014d;
     cpu->sp = 0xfffe;
     cpu->pc = 0x0100;
-    cpu->ifl = 1;
     cpu->halted = false;
 }
 

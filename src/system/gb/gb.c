@@ -80,7 +80,7 @@ int main( int argc, char **argv ) {
     busDevice_t *gbbus = GenericBus( "gb" );
 
     busDevice_t* ram = GenericRam( 0x2000 );
-    busDevice_t* zpage = GenericRam( 0x79 );
+    busDevice_t* zpage = GenericRam( 0x7f );
     busDevice_t* cram = GenericRam( 0x17ff );
     busDevice_t* bgram = GenericRam( 0x800 );
     busDevice_t* oam = GenericRam( 0x9f );
@@ -97,6 +97,7 @@ int main( int argc, char **argv ) {
     GenericBusMapping( gbbus, "zpage",   0xff80, 0xfffe, zpage );
 
     MapGbRegs( gbbus );
+    SerialToStderr( gbbus );
 
     lr35902_t *cpu = Lr35902( gbbus );
 

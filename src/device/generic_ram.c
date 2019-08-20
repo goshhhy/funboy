@@ -18,7 +18,7 @@ static uint8_t GenericRamRead( busDevice_t *dev, uint32_t addr, bool final ) {
     ram = dev->data;
 
     if ( addr > ram->len ) {
-        fprintf( stderr, "warning: GenericRamRead: address out of bounds\n" );
+        fprintf( stderr, "warning: GenericRamRead: address out of bounds ( access to %04x in a block  of size %04lx)\n", addr, ram->len );
         return 0;
     }
     return ram->bytes[addr];
@@ -33,7 +33,7 @@ static void GenericRamWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
     ram = dev->data;
 
     if ( addr > ram->len ) {
-        fprintf( stderr, "warning: GenericRamWrite: address out of bounds\n" );
+        fprintf( stderr, "warning: GenericRamWrite: address out of bounds ( access to 0x%04x in a block  of size 0x%04lx)\n", addr, ram->len );
         return;
     }
     ram->bytes[addr] = val;

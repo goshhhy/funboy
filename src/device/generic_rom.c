@@ -38,7 +38,7 @@ static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
         exit(1);
         return;
     }
-    fprintf( stderr, "warning: discarded write to rom area\n" );
+    fprintf( stderr, "warning: discarded write to rom area [0x%04x]\n", addr );
     exit(1);
 }
 

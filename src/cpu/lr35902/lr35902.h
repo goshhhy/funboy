@@ -58,6 +58,7 @@ typedef struct lr35902_s{
     busDevice_t* bus;
     void (*Reset)( struct lr35902_s *self );
     void (*Step)( struct lr35902_s *self );
+	void (*Interrupt)( struct lr35902_s *cpu, uint8_t inum );
 } lr35902_t;
 
 

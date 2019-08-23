@@ -236,13 +236,14 @@ static void jrx( lr35902_t* cpu ) {
 }
 
 static void pushw( lr35902_t* cpu, uint16_t word ) {
-    write8( cpu, cpu->sp--, ( word & 0xff00 ) >> 8, false );
-    write8( cpu, cpu->sp--, ( word & 0xff ), false );
+    cpu->sp -= 2;
+    write8( cpu, cpu->sp + 1, ( word & 0xff00 ) >> 8, false );
+    write8( cpu, cpu->sp, ( word & 0xff ), true );
 }
 
 static uint16_t popw( lr35902_t* cpu ) {
     cpu->sp += 2;
-    return ( read8( cpu, cpu->sp, false) << 8 ) + read8( cpu, cpu->sp - 1, false );
+    return ( read8( cpu, cpu->sp - 1, false) << 8 ) + read8( cpu, cpu->sp - 2, true );
 }
 
 static void call( lr35902_t* cpu ) {
@@ -479,6 +480,10 @@ static void Step( lr35902_t *cpu ) {
     cpu->pc++;
 }
 
+static void Interrupt( lr35902_t *cpu, uint8_t inum ) {
+
+}
+
 static void Reset( lr35902_t *cpu ) {
     cpu->af = 0x01b0;
     cpu->bc = 0x0013;
@@ -494,6 +499,7 @@ lr35902_t *Lr35902( busDevice_t *bus ) {
 	cpu->bus = bus;
 	cpu->Reset = Reset;
 	cpu->Step = Step;
+    cpu->Interrupt = Interrupt;
 	Reset( cpu );
     printf( "lr35902 cpu created\n" );
 	return cpu;

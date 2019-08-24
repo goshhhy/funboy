@@ -288,8 +288,8 @@ static void hlt( lr35902_t *cpu ) {
 }
 
 static void rst( lr35902_t *cpu ) {
-    pushw( cpu, cpu->pc + 2 );
-    cpu->pc = cpu->op.y << 3;
+    pushw( cpu, cpu->pc + 1 );
+    cpu->pc = (cpu->op.y << 3) - 1;
 }
 
 static void pop( lr35902_t *cpu ) {
@@ -336,12 +336,9 @@ static void fa( lr35902_t *cpu ) {
 
 static void addsp( lr35902_t *cpu ) {
     uint16_t oldsp = cpu->sp;
-    uint8_t val = (int8_t)read8( cpu, cpu->pc++, true );
+    int8_t val = (int8_t)read8( cpu, ++cpu->pc, true );
     cpu->sp = cpu->sp + val;
-    if ( val < 0 )
-        SetFlags( cpu, 0, 0, ( oldsp & 0xfff ) > ( cpu->sp & 0xfff ), ( oldsp & 0xffff ) > ( cpu->sp & 0xffff ) );
-    else
-        SetFlags( cpu, 0, 0, ( oldsp & 0xfff ) < ( cpu->sp & 0xfff ), ( oldsp & 0xffff ) < ( cpu->sp & 0xffff ) );
+    SetFlags( cpu, 0, 0, ( oldsp & 0xf ) > ( cpu->sp & 0xf ), ( oldsp & 0xff ) > ( cpu->sp & 0xff ) );
 }
 
 static void jphl( lr35902_t *cpu ) {
@@ -349,16 +346,16 @@ static void jphl( lr35902_t *cpu ) {
 }
 
 static void lhlsi( lr35902_t *cpu ) {
-    uint8_t val = (int8_t)read8( cpu, cpu->pc++, true );
-    cpu->hl = cpu->sp + val;
-    if ( val < 0 )
-        SetFlags( cpu, 0, 0, ( cpu->sp & 0xfff ) > ( cpu->hl & 0xfff ), ( cpu->sp & 0xffff ) > ( cpu->hl & 0xffff ) );
-    else
-        SetFlags( cpu, 0, 0, ( cpu->sp & 0xfff ) < ( cpu->hl & 0xfff ), ( cpu->sp & 0xffff ) < ( cpu->hl & 0xffff ) );
+    int8_t val = (int8_t)read8( cpu, ++cpu->pc, true );
+    printf("e8 is %hhi\n", val );
+    cpu->hl = (int16_t)cpu->sp + val;
+    SetFlags( cpu, 0, 0, ( cpu->hl & 0xf ) < ( cpu->sp & 0xf ), ( cpu->hl & 0xff ) < ( cpu->sp & 0xff ) );
 }
 
 static void l16sp( lr35902_t *cpu ) {
-    cpu->sp = read16( cpu, cpu->pc+1, true );  
+    uint16_t addr = read16( cpu, cpu->pc+1, true );  
+    write8( cpu, addr + 1, (cpu->sp & 0xff00) >> 8, false );
+    write8( cpu, addr, cpu->sp & 0xff, true );
     cpu->pc += 2;
 }
 
@@ -415,18 +412,15 @@ static void srl( lr35902_t *cpu ) {
 }
 
 static void bit( lr35902_t *cpu ) {
-    printf( "bit unimplemented\n" );
-    exit( 1 );
+    SetFlags( cpu, ( read_r( cpu, cpu->op.z ) & ( 0x01 << cpu->op.y ) ) == 0 , 0, 1, cpu->fc );
 }
 
 static void res( lr35902_t *cpu ) {
-    printf( "res unimplemented\n" );
-    exit( 1 );
+    write_r( cpu, read_r( cpu, cpu->op.z ) & ~( 0x01 << cpu->op.y ), cpu->op.z );
 }
 
 static void set( lr35902_t *cpu ) {
-    printf( "set unimplemented\n" );
-    exit( 1 );
+    write_r( cpu, read_r( cpu, cpu->op.z ) | ( 0x01 << cpu->op.y ), cpu->op.z );
 }
 
 void (*cbops[32])( lr35902_t* cpu ) = {
@@ -470,18 +464,46 @@ void (*ops[256])( lr35902_t* cpu ) = {
 };
 
 static void Step( lr35902_t *cpu ) {
-    if ( cpu->halted )
-        return;
-    cpu->op.full = cpu->bus->Read8( cpu->bus, cpu->pc, false );
-    uint16_t imm16 = read16(cpu, cpu->pc+1, false);
-    printf("[%04x] af:%04x bc:%04x de: %04x hl: %04x sp: %04x op: %02x imm16: %02x\n", cpu->pc, cpu->af, cpu->bc, cpu->de, cpu->hl, cpu->sp, cpu->op.full, imm16 );
+    uint8_t active;
 
-    ops[cpu->op.full]( cpu );
-    cpu->pc++;
+    if ( ! cpu->halted ) {
+        cpu->op.full = cpu->bus->Read8( cpu->bus, cpu->pc, false );
+        uint16_t imm16 = read16(cpu, cpu->pc+1, false);
+        printf("[%04x] af:%04x bc:%04x de: %04x hl: %04x sp: %04x op: %02x imm16: %02x\n", cpu->pc, cpu->af, cpu->bc, cpu->de, cpu->hl, cpu->sp, cpu->op.full, imm16 );
+
+        ops[cpu->op.full]( cpu );
+        cpu->pc++;
+    }
+
+    // run interrupts if applicable
+    if ( cpu->ifl ) {
+        active = ( read8( cpu, 0xffff, false ) & read8( cpu, 0xff0f, false ) ) & 0x1F; 
+        if ( active ) {
+            pushw( cpu, cpu->pc );
+            cpu->halted = false;
+            cpu->ifl = false;
+            if ( active & 0x1 ) {
+                write8( cpu, 0xff0f, active & 0x1E, true );
+                cpu->pc = 0x40;
+            } else if ( active & 0x2 ) {
+                write8( cpu, 0xff0f, active & 0x1D, true );
+                cpu->pc = 0x48;
+            } else if ( active & 0x4 ) {
+                write8( cpu, 0xff0f, active & 0x1B, true );
+                cpu->pc = 0x50;
+            } else if ( active & 0x8 ) {
+                write8( cpu, 0xff0f, active & 0x17, true );
+                cpu->pc = 0x58;
+            } else if ( active & 0x10 ) {
+                write8( cpu, 0xff0f, active & 0x0F, true );
+                cpu->pc = 0x60;
+            }
+        }
+    }
 }
 
 static void Interrupt( lr35902_t *cpu, uint8_t inum ) {
-
+        write8( cpu, 0xff0f, read8( cpu, 0xff0f, false ) & (0x1 << inum), false );
 }
 
 static void Reset( lr35902_t *cpu ) {

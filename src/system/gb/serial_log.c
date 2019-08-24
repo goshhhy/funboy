@@ -5,7 +5,7 @@
 
 #include "../../version.h"
 #include "../../device/device.h"
-#include "../../cpu/lr35902/lr35902.h"
+#include "../../cpu/sm83/sm83.h"
 
 typedef struct regInfo_s {
     char* name;

@@ -5,7 +5,7 @@
 
 #include "../../version.h"
 #include "../../device/device.h"
-#include "../../cpu/lr35902/lr35902.h"
+#include "../../cpu/sm83/sm83.h"
 
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
@@ -99,7 +99,7 @@ int main( int argc, char **argv ) {
     MapGbRegs( gbbus );
     SerialToStderr( gbbus );
 
-    lr35902_t *cpu = Lr35902( gbbus );
+    sm83_t *cpu = Sm83( gbbus );
 
     while ( true ) {
 	    cpu->Step( cpu );

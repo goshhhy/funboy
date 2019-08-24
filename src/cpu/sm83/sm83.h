@@ -1,7 +1,7 @@
 
 #define lr_dreg(x, y) union{struct{uint8_t y; uint8_t x;};uint16_t x##y;};
 
-typedef struct lr35902_instruction_s {
+typedef struct sm83_instruction_s {
     union {
         struct {
             uint8_t b0:1;
@@ -26,9 +26,9 @@ typedef struct lr35902_instruction_s {
 		};
         uint8_t full;
     };
-} lr35902_instruction_t;
+} sm83_instruction_t;
 
-typedef struct lr35902_s{ 
+typedef struct sm83_s{ 
 	union{
 		struct{
 			union{
@@ -53,13 +53,13 @@ typedef struct lr35902_s{
 	uint8_t ifl;
 	bool halted;
 	// internal state
-	lr35902_instruction_t op;
+	sm83_instruction_t op;
 	// external
     busDevice_t* bus;
-    void (*Reset)( struct lr35902_s *self );
-    void (*Step)( struct lr35902_s *self );
-	void (*Interrupt)( struct lr35902_s *cpu, uint8_t inum );
-} lr35902_t;
+    void (*Reset)( struct sm83_s *self );
+    void (*Step)( struct sm83_s *self );
+	void (*Interrupt)( struct sm83_s *cpu, uint8_t inum );
+} sm83_t;
 
 
-lr35902_t *Lr35902( busDevice_t *bus );
+sm83_t *Sm83( busDevice_t *bus );

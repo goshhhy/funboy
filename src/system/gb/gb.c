@@ -6,16 +6,14 @@
 #include "../../version.h"
 #include "../../device/device.h"
 #include "../../cpu/sm83/sm83.h"
+#include "timer.h"
 
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
+#define GB_CLOCK_SPEED 4194304
+
 void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "JoyIn",           0xFF00, 1 );
-
-    REGISTER( gbbus, "TmrDiv",          0xFF04, 1 );
-    REGISTER( gbbus, "TmrCtr",          0xFF05, 1 );
-    REGISTER( gbbus, "TmrMod",          0xFF06, 1 );
-    REGISTER( gbbus, "TmrCtl",          0xFF07, 1 );
 
     REGISTER( gbbus, "SndCh1Sweep",     0xFF10, 1 );
     REGISTER( gbbus, "SndCh1Len",       0xFF11, 1 );
@@ -75,6 +73,7 @@ void MapGbRegs( busDevice_t* gbbus ) {
 }
 
 int main( int argc, char **argv ) {
+    int framestep = 0;
     printf( "kutaragi!gb v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
 
     busDevice_t *gbbus = GenericBus( "gb" );
@@ -90,7 +89,7 @@ int main( int argc, char **argv ) {
     GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
     GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );
     GenericBusMapping( gbbus, "bgram",   0x9800, 0x9fff, bgram );
-    GenericBusMapping( gbbus, "cartram", 0xa000, 0xbfff, ram );
+    GenericBusMapping( gbbus, "cartram", 0xa000, 0xbfff, cartram );
     GenericBusMapping( gbbus, "ram",     0xc000, 0xdfff, ram );
     GenericBusMapping( gbbus, "echo",    0xe000, 0xfdff, ram );
     GenericBusMapping( gbbus, "oam",     0xfe00, 0xfe9f, oam );
@@ -100,8 +99,13 @@ int main( int argc, char **argv ) {
     SerialToStderr( gbbus );
 
     sm83_t *cpu = Sm83( gbbus );
+    gbTimer_t *timer = GbTimer( gbbus, cpu );
 
     while ( true ) {
-	    cpu->Step( cpu );
+        for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {
+	       if ( ( framestep % 4 ) == 0 ) 
+                cpu->Step( cpu );
+           timer->Step( timer );
+        }
     }
 }

@@ -503,6 +503,7 @@ static void Step( sm83_t *cpu ) {
 }
 
 static void Interrupt( sm83_t *cpu, uint8_t inum ) {
+        fprintf( stderr, "interrupt %hhi set with interrupts %i, ie %hhi\n", inum, cpu->ifl, read8( cpu, 0xffff, false ) );
         write8( cpu, 0xff0f, read8( cpu, 0xff0f, false ) & (0x1 << inum), false );
 }
 

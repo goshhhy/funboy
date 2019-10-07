@@ -230,8 +230,10 @@ static void jr( sm83_t* cpu ) {
 }
 
 static void jrx( sm83_t* cpu ) {
-    if ( NzNc( cpu ) )
+    if ( NzNc( cpu ) ) {
         cpu->pc = cpu->pc + (int8_t)read8( cpu, cpu->pc + 1, true );
+        cpu->timetarget += 4;
+    }
     cpu->pc++;
 }
 
@@ -255,6 +257,7 @@ static void callx( sm83_t* cpu ) {
     if ( NzNc( cpu ) ) {
         pushw( cpu, cpu->pc + 3 );
         cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
+        cpu->timetarget += 12;
     } else {
         cpu->pc += 2;
     }
@@ -263,6 +266,7 @@ static void callx( sm83_t* cpu ) {
 static void jpx( sm83_t* cpu ) {
     if ( NzNc( cpu ) ) {
         cpu->pc = read16( cpu, cpu->pc + 1, true ) - 1;
+        cpu->timetarget += 4;
     } else {
         cpu->pc += 2;
     }
@@ -280,6 +284,7 @@ static void reti( sm83_t* cpu ) {
 static void retx( sm83_t* cpu ) {
     if ( NzNc( cpu ) ) {
         cpu->pc = popw( cpu ) - 1;
+        cpu->timetarget += 12;
     }
 }
 
@@ -301,6 +306,7 @@ static void psh( sm83_t *cpu ) {
 }
 
 static void edi( sm83_t *cpu ) {
+    fprintf( stderr, "edi: %02x: interrupts %s\n", cpu->op.full, cpu->op.q ? "ENABLED" : "DISABLED" );
     cpu->ifl = cpu->op.q;
 }
 
@@ -463,11 +469,39 @@ void (*ops[256])( sm83_t* cpu ) = {
     f0,   pop,  f2,   edi,    bad,  psh,  or,   rst,    lhlsi,lsphl,fa,   edi,    bad,  bad,  cp,   rst, 
 };
 
+int timings[256] = {
+    4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8,  8,  4,  4,  8,  4,
+    4, 12,  8,  8,  4,  4,  8,  4, 12,  8,  8,  8,  4,  4,  8,  4,
+    8, 12,  8,  8,  4,  4,  8,  4,  8,  8,  8,  8,  4,  4,  8,  4,
+    8, 12,  8,  8, 12, 12, 12,  4,  8,  8,  8,  8,  4,  4,  8,  4,
+    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+    8,  8,  8,  8,  8,  8,  4,  8,  4,  4,  4,  4,  4,  4,  8,  4,
+    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+    4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+    8, 12, 12, 16, 12, 16,  8, 16,  8, 16, 12,  4, 12, 24,  8,  16,
+    8, 12, 12,  4, 12, 16,  8, 16,  8, 16, 12,  4, 12,  4,  8,  16,
+    12, 12, 8,  4,  4, 16,  8, 16, 16,  4, 16,  4,  4,  4,  8,  16,
+    12, 12, 8,  4,  4, 16,  8, 16, 12,  8, 16,  4,  4,  4,  8,  16,
+};
+
 static void Step( sm83_t *cpu ) {
     uint8_t active;
 
-    if ( ! cpu->halted ) {
+    if ( cpu->fetched == false ) {
         cpu->op.full = cpu->bus->Read8( cpu->bus, cpu->pc, false );
+        cpu->timetarget += timings[cpu->op.full];
+        cpu->fetched = true;
+    }
+
+    cpu->timetarget--;
+    if ( cpu->timetarget > 0 )
+        return;
+
+    if ( ! cpu->halted ) {
         uint16_t imm16 = read16(cpu, cpu->pc+1, false);
         printf("[%04x] af:%04x bc:%04x de: %04x hl: %04x sp: %04x op: %02x imm16: %02x\n", cpu->pc, cpu->af, cpu->bc, cpu->de, cpu->hl, cpu->sp, cpu->op.full, imm16 );
 
@@ -476,12 +510,12 @@ static void Step( sm83_t *cpu ) {
     }
 
     // run interrupts if applicable
-    if ( cpu->ifl ) {
+    if ( cpu->ifl == 1 ) {
         active = ( read8( cpu, 0xffff, false ) & read8( cpu, 0xff0f, false ) ) & 0x1F; 
         if ( active ) {
             pushw( cpu, cpu->pc );
             cpu->halted = false;
-            cpu->ifl = false;
+            cpu->ifl = 0;
             if ( active & 0x1 ) {
                 write8( cpu, 0xff0f, active & 0x1E, true );
                 cpu->pc = 0x40;
@@ -500,10 +534,12 @@ static void Step( sm83_t *cpu ) {
             }
         }
     }
+
+    cpu->fetched = false;
 }
 
 static void Interrupt( sm83_t *cpu, uint8_t inum ) {
-        fprintf( stderr, "interrupt %hhi set with interrupts %i, ie %hhi\n", inum, cpu->ifl, read8( cpu, 0xffff, false ) );
+        //fprintf( stderr, "interrupt %hhi set with interrupts %i, ie %hhi\n", inum, cpu->ifl, read8( cpu, 0xffff, false ) );
         write8( cpu, 0xff0f, read8( cpu, 0xff0f, false ) & (0x1 << inum), false );
 }
 
@@ -515,6 +551,8 @@ static void Reset( sm83_t *cpu ) {
     cpu->sp = 0xfffe;
     cpu->pc = 0x0100;
     cpu->halted = false;
+    cpu->fetched = false;
+    cpu->timetarget = 1;
 }
 
 sm83_t *Sm83( busDevice_t *bus ) {

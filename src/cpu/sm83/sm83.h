@@ -54,6 +54,8 @@ typedef struct sm83_s{
 	bool halted;
 	// internal state
 	sm83_instruction_t op;
+	bool fetched;
+	int timetarget;
 	// external
     busDevice_t* bus;
     void (*Reset)( struct sm83_s *self );

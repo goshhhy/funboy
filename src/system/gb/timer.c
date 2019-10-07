@@ -20,10 +20,11 @@ static bool enabled;
 static uint8_t divReg;
 static uint8_t divSubcount;
 static uint8_t countReg;
-static uint8_t countSubcount;
-static uint8_t divisor;
+static uint16_t countSubcount;
+static uint16_t divisor;
 static uint8_t modulo;
 static uint8_t control;
+static bool overflowed;
 
 static void DivRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     regInfo_t *reg;
@@ -36,9 +37,10 @@ static void DivRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool
         fprintf( stderr, "warning: DivRegisterWrite: address out of bounds\n" );
         return;
     }
-
+    printf( "write register [0x%08x]%s <- %02x (byte %u), becomes 0\n", addr, reg->name, val, addr );
     fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u), becomes 0\n", addr, reg->name, val, addr );
     divReg = 0;
+    divSubcount = 0;
 }
 
 static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
@@ -53,31 +55,50 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
         return;
     }
 
+    printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
     fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
     control = val & 0x07;
 
     enabled = ( ( control & 4 ) != 0 );
     
-    switch ( control & 0x03 ) {
-        case 0: divisor = 64; break;
-        case 1: divisor = 1; break;
-        case 2: divisor = 4; break;
-        case 3: divisor = 16; break;
-        default: fprintf( stderr, "universe is broken in timer\n"); exit( -1 );
-    }
+    fprintf( stderr, "timer set!\n");
 }
 
 static void Step( gbTimer_t *self ) {
+    uint8_t selectors_pre[4] = { 0, 0, 0, 0 }, selectors_post[4] = { 0, 0, 0, 0 };
+    
     if ( !enabled )
         return;
-    if ( divSubcount++ > 15 ) {
-        divSubcount = 0;
+
+    if ( overflowed ) {
+        if ( ( self->cpu->bus->Read8( self->cpu->bus, 0xff0a, false ) & 0x04 ) == 0 ) {
+            printf( "timer interrupt!\n" );
+            fprintf( stderr, "timer interrupt!\n" ); 
+            self->cpu->Interrupt( self->cpu, 2 );
+        }
+        countReg = modulo;
+        overflowed = false;
+    }
+
+    selectors_pre[0] = ( divReg & 0x02 ) >> 1;
+    selectors_pre[1] = ( divSubcount & 0x08 ) >> 3;
+    selectors_pre[2] = ( divSubcount & 0x20 ) >> 5;
+    selectors_pre[3] = ( divSubcount & 0x80 ) >> 7;
+
+    divSubcount++;
+    if ( divSubcount == 0 ) {
         divReg++;
     }
-    if ( countSubcount++ >= divisor ) {
-        countSubcount = 0;
-        if ( ( countReg++ ) == 0 ) {
-            self->cpu->Interrupt( self->cpu, 2 );
+
+    selectors_post[0] = ( divReg & 0x02 ) >> 1;
+    selectors_post[1] = ( divSubcount & 0x08 ) >> 3;
+    selectors_post[2] = ( divSubcount & 0x20 ) >> 5;
+    selectors_post[3] = ( divSubcount & 0x80 ) >> 7;
+
+    if ( selectors_pre[control & 0x03] > selectors_post[control & 0x03] ) {
+        countReg++;
+        if ( countReg == 0 ) {
+            overflowed = true;
         }
     }
 }

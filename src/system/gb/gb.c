@@ -103,9 +103,8 @@ int main( int argc, char **argv ) {
 
     while ( true ) {
         for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {
-	       if ( ( framestep % 4 ) == 0 ) 
-                cpu->Step( cpu );
-           timer->Step( timer );
+            cpu->Step( cpu );
+            timer->Step( timer );
         }
     }
 }

@@ -71,7 +71,7 @@ static void Step( gbTimer_t *self ) {
         return;
 
     if ( overflowed ) {
-        if ( ( self->cpu->bus->Read8( self->cpu->bus, 0xff0a, false ) & 0x04 ) == 0 ) {
+        if ( ( self->cpu->bus->Read8( self->cpu->bus, 0xff0f, false ) & 0x04 ) == 0 ) {
             printf( "timer interrupt!\n" );
             fprintf( stderr, "timer interrupt!\n" ); 
             self->cpu->Interrupt( self->cpu, 2 );

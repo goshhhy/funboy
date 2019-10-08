@@ -39,7 +39,7 @@ static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
         return;
     }
     fprintf( stderr, "warning: discarded write to rom area [0x%04x]\n", addr );
-    exit(1);
+    //exit(1);
 }
 
 char* GenericRomBytesPtr( busDevice_t *dev ) {

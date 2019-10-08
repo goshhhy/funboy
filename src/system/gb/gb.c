@@ -101,7 +101,6 @@ int main( int argc, char **argv ) {
             timer->Step( timer );
             ppu->Step( ppu );
         }
-        fprintf(stderr, "update\n");
         go = IO_Update();
     }
 }

@@ -42,7 +42,7 @@ static void GenericRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
         return;
     }
 
-    printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    fprintf( stdout, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
     if ( reg->data ) {
         reg->data[addr] = val;
     }

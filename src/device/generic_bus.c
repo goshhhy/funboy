@@ -31,7 +31,7 @@ static busMapping_t* GetTargetBusMapping( busInfo_t* bus, uint32_t addr ) {
             }
         }
     }
-    printf( "no device found for access (offset %08x)\n", addr );
+    printf( "bus %s: no device found for access (offset %08x)\n", bus->name, addr );
     //exit( 1 );
     return NULL;
 }

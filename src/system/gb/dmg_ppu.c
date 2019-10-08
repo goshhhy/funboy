@@ -21,10 +21,10 @@ static int16_t dotClock, dotDelay, dotDelayTotal;
 static bool enabled;
 
 uint8_t colors[4][3] = {
-	{ 0xff, 0xff, 0xff },
-	{ 0xaa, 0xaa, 0xaa },
-	{ 0x55, 0x55, 0x55 },
-	{ 0x00, 0x00, 0x00 },
+	{ 0xe7, 0xe7, 0xc7 },
+	{ 0xc3, 0xc3, 0xa3 },
+	{ 0x9b, 0x9b, 0x8b },
+	{ 0x38, 0x38, 0x28 },
 };
 
 typedef struct regInfo_s {
@@ -90,23 +90,32 @@ static void Step( gbPpu_t *self ) {
         uint8_t tileLine = bgLine / 8;
         uint8_t tileRow = bgRow / 8;
         uint16_t tileOffset = ( (uint16_t)tileLine * (uint16_t)32 ) + (uint16_t)tileRow;
-        uint8_t tileNum = self->bgRam->Read8( self->bgRam, bgMapBase + tileOffset, false );
+        uint8_t tileNum = self->bgRam->Read8( self->bgRam, bgMapBase + tileOffset, false ); 
+
+        if ( ( lcdc & 0x10 ) == 0 ) {
+            int8_t tileFix = (int8_t)tileNum;
+            tileFix = tileFix + 128;
+            tileNum = tileFix;
+        }
 
         uint8_t pixLine = bgLine % 8;
         uint8_t pixRow = bgRow % 8;
-        uint8_t tileByteIndex = pixLine * 2;
+        uint16_t tileByteIndex = pixLine * 2;
 
-        if ( pixRow > 3 ) {
-            tileByteIndex += 1;
-            pixRow -= 4;
-        }
-        uint8_t byte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
-        byte = ( byte >> ( 2 * ( 3 - pixRow ) ) ) & 0x03;
-        shade = ( bgPal >> ( 2 * byte ) ) & 0x03;
+        uint8_t upperByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
+        uint8_t lowerByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
+        uint8_t palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+        palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
+        shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
 
         IO_DrawPixel( dotClock, ly, colors[shade][0], colors[shade][1], colors[shade][2] );
         lcdStat |= 0x03;
     } else if ( ly < 144 ) {
+        if ( dotClock == 160 ) {
+            if ( ( lcdStat & 0x08 ) != 0 ) {
+                self->cpu->Interrupt( self->cpu, 1 );
+            }
+        }
         lcdStat |= 0x00;
     } else {
         lcdStat |= 0x01;
@@ -121,6 +130,9 @@ static void Step( gbPpu_t *self ) {
         }
         if ( ly == 144 ) {
             self->cpu->Interrupt( self->cpu, 0 );
+            if ( ( lcdStat & 0x10 ) != 0 ) {
+                self->cpu->Interrupt( self->cpu, 1 );
+            }
         }
         if ( ly == lyc )  {
             if ( ( lcdStat & 0x40 ) != 0 ) {
@@ -141,6 +153,7 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     ppu->bgRam = bgRam;
     ppu->cRam = cRam;
     IO_Init( 640, 576, 160, 144 );
+    IO_SetBg( 0xf0, 0xf0, 0xd0 );
 
     enabled = true;
     lcdc = lcdStat = 0;

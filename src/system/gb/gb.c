@@ -6,7 +6,10 @@
 #include "../../version.h"
 #include "../../device/device.h"
 #include "../../cpu/sm83/sm83.h"
+#include "../../io/io.h"
+
 #include "timer.h"
+#include "ppu.h"
 
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
@@ -55,18 +58,7 @@ void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "WavRam14",        0xFF3E, 1 );
     REGISTER( gbbus, "WavRam15",        0xFF3F, 1 );
 
-    REGISTER( gbbus, "LCDControl",      0xFF40, 1 );
-    REGISTER( gbbus, "LCDStat",         0xFF41, 1 );
-    REGISTER( gbbus, "LCDScrollY",      0xFF42, 1 );
-    REGISTER( gbbus, "LCDScrollX",      0xFF43, 1 );
-    REGISTER( gbbus, "LCDY",            0xFF44, 1 );
-    REGISTER( gbbus, "LYComp"    ,      0xFF45, 1 );
     REGISTER( gbbus, "DMATx",           0xFF46, 1 );
-    REGISTER( gbbus, "BGPal",           0xFF47, 1 );
-    REGISTER( gbbus, "ObjPal0",         0xFF48, 1 );
-    REGISTER( gbbus, "ObjPal1",         0xFF49, 1 );
-    REGISTER( gbbus, "WinY",            0xFF4A, 1 );
-    REGISTER( gbbus, "WinX",            0xFF4B, 1 );
     
     REGISTER( gbbus, "IntFlag",         0xFF0F, 1 );
     REGISTER( gbbus, "IntEnable",       0xFFFF, 1 );
@@ -74,6 +66,7 @@ void MapGbRegs( busDevice_t* gbbus ) {
 
 int main( int argc, char **argv ) {
     int framestep = 0;
+    bool go = true;
     printf( "kutaragi!gb v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
 
     busDevice_t *gbbus = GenericBus( "gb" );
@@ -100,11 +93,15 @@ int main( int argc, char **argv ) {
 
     sm83_t *cpu = Sm83( gbbus );
     gbTimer_t *timer = GbTimer( gbbus, cpu );
+    gbPpu_t *ppu = GbPpu( gbbus, cpu, bgram, cram );
 
-    while ( true ) {
+    while ( go ) {
         for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {
             cpu->Step( cpu );
             timer->Step( timer );
+            ppu->Step( ppu );
         }
+        fprintf(stderr, "update\n");
+        go = IO_Update();
     }
 }

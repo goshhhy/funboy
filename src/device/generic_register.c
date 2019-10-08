@@ -8,7 +8,7 @@
 typedef struct regInfo_s {
     char* name;
     size_t len;
-    uint32_t* data;
+    uint8_t* data;
 } regInfo_t;
 
 static uint8_t GenericRegisterRead( busDevice_t *dev, uint32_t addr, bool final ) {
@@ -48,7 +48,7 @@ static void GenericRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
     }
 }
 
-uint32_t *GenericRegisterdataPtr( busDevice_t *dev ) {
+uint8_t *GenericRegisterdataPtr( busDevice_t *dev ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -58,7 +58,7 @@ uint32_t *GenericRegisterdataPtr( busDevice_t *dev ) {
     return reg->data;
 }
 
-busDevice_t *GenericRegister( char *name, uint32_t *data, size_t len, uint8_t (*Read8)( struct busDevice_s* self, uint32_t addr, bool final ),
+busDevice_t *GenericRegister( char *name, uint8_t *data, size_t len, uint8_t (*Read8)( struct busDevice_s* self, uint32_t addr, bool final ),
                                     void (*Write8)( struct busDevice_s* self, uint32_t addr, uint8_t val, bool final ) ) {
     busDevice_t *dev;
     regInfo_t *reg;
@@ -68,7 +68,7 @@ busDevice_t *GenericRegister( char *name, uint32_t *data, size_t len, uint8_t (*
         return NULL;
     }
     if ( !data ) {
-        data = malloc( sizeof( uint32_t ) );
+        data = malloc( sizeof( uint8_t ) * len );
     }
     reg->name = name;
     reg->len = len;

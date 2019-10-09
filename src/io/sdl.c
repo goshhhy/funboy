@@ -17,6 +17,8 @@ int renderScale = 4;
 int useScanLines = 0;
 int useDotsFilter = 1;
 
+char* emuName = "kutaragi!";
+
 uint8_t bgRed = 0, bgGreen = 0, bgBlue = 0;
 
 int renderWidth, renderHeight;
@@ -66,6 +68,18 @@ int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight ) {
 	SDL_UpdateWindowSurface( window );
 
 	return 0;
+}
+
+void IO_SetEmuName( const char* name ) {
+	emuName = name;
+} 
+
+void IO_SetTitle( const char* title ) {
+	char final[256] = "";
+	strcat( final, emuName );
+	strcat( final, " - " );
+	strncat( final, title, 16 );
+	SDL_SetWindowTitle( window, final );
 }
 
 void IO_DrawPixel( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {

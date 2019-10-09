@@ -61,6 +61,28 @@ void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "IntEnable",       0xFFFF, 1 );
 }
 
+busDevice_t *LoadRom( char* path ) {
+    char romName[17] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    busDevice_t* rom = GenericRom( path, 512 );
+
+    for ( int i = 0; i < 16; i++ )
+        romName[i] = rom->Read8( rom, 0x134 + i, false );
+
+    if ( ( romName[15] == 0x80 ) || ( romName[15 ] == 0xC0 ) ) {
+        romName[15] == '\0';        
+    }
+    printf( "Loading rom %s\n", romName );
+    IO_SetTitle( romName );
+
+    uint8_t mapperType = rom->Read8( rom, 0x147, false );
+    size_t romSize = ( 32 * 1024 ) << rom->Read8( rom, 0x148, false );
+    printf( "mapper type is %02x\n", rom->Read8( rom, 0x147, false ) );
+    printf( "rom size is %ikb\n", romSize / 1024 );
+    rom = GenericRom( path, romSize );
+
+    return rom;
+}
+
 int main( int argc, char **argv ) {
     int framestep = 0;
     bool go = true;
@@ -73,17 +95,7 @@ int main( int argc, char **argv ) {
     busDevice_t* cram = GenericRam( 0x17ff );
     busDevice_t* bgram = GenericRam( 0x800 );
     busDevice_t* oam = GenericRam( 0x9f );
-    busDevice_t* rom = GenericRom( argv[1], 32 * 1024 );
     busDevice_t* cartram = GenericRam( 0x2000 );
-    
-    GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
-    GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );
-    GenericBusMapping( gbbus, "bgram",   0x9800, 0x9fff, bgram );
-    GenericBusMapping( gbbus, "cartram", 0xa000, 0xbfff, cartram );
-    GenericBusMapping( gbbus, "ram",     0xc000, 0xdfff, ram );
-    GenericBusMapping( gbbus, "echo",    0xe000, 0xfdff, ram );
-    GenericBusMapping( gbbus, "oam",     0xfe00, 0xfe9f, oam );
-    GenericBusMapping( gbbus, "zpage",   0xff80, 0xfffe, zpage );
 
     MapGbRegs( gbbus );
     SerialToStderr( gbbus );
@@ -92,6 +104,19 @@ int main( int argc, char **argv ) {
     gbTimer_t *timer = GbTimer( gbbus, cpu );
     gbPpu_t *ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
     GbInput( gbbus, cpu );
+
+    IO_SetEmuName( "kutaragi!gb" );
+
+    busDevice_t* rom = LoadRom( argv[1] );
+
+    GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
+    GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );
+    GenericBusMapping( gbbus, "bgram",   0x9800, 0x9fff, bgram );
+    GenericBusMapping( gbbus, "cartram", 0xa000, 0xbfff, cartram );
+    GenericBusMapping( gbbus, "ram",     0xc000, 0xdfff, ram );
+    GenericBusMapping( gbbus, "echo",    0xe000, 0xfdff, ram );
+    GenericBusMapping( gbbus, "oam",     0xfe00, 0xfe9f, oam );
+    GenericBusMapping( gbbus, "zpage",   0xff80, 0xfffe, zpage );
 
     while ( go ) {
         for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {

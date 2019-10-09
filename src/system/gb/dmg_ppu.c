@@ -142,7 +142,7 @@ static void Step( gbPpu_t *self ) {
                 if ( ! ( ( spriteX > 0 ) && ( spriteX < 168 ) && ( dotClock < spriteX ) && ( dotClock >= ( spriteX - 8 ) ) ) )
                     continue;
                 uint8_t spriteY = self->oam->Read8( self->oam, ( spriteNum * 4 ), false );
-                if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( ly < ( ( bestAttr & 0x10 ) ? spriteY : spriteY ) - 8 ) && ( ly >= ( spriteY - 16 ) ) ) )
+                if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( ly < spriteY  ) && ( ly >= ( spriteY - 16 ) ) ) )
                     continue;
                 if ( spriteX > bestX )
                     continue;
@@ -165,13 +165,15 @@ static void Step( gbPpu_t *self ) {
                 uint8_t spritePixLine = bestY - ly - 1;
                 if ( ( bestAttr & 0x20 ) == 0 )
                     spritePixRow = 7 - spritePixRow;
-                if ( ( bestAttr & 0x40 ) == 0 )
-                    spritePixLine = 7 - spritePixLine;
-                if ( ( lcdc & 0x04 ) == 0 ) {
-                    spritePixLine += 8;
+                if ( ( bestAttr & 0x40 ) == 0 ) {
+                    if ( ( lcdc & 0x04 ) == 0 ) {
+                        spritePixLine = ( 7 - spritePixLine ) + 8;
+                    } else {
+                        spritePixLine = ( 15 - spritePixLine );
+                    }
                 }
-                if ( ( ( lcdc & 0x04 ) == 1 ) || ( spritePixLine < 8 ) ) {
-                    tileByteIndex = spritePixLine * 2;
+                tileByteIndex = spritePixLine * 2;
+                if ( ( ( lcdc & 0x04 ) != 0 ) || ( spritePixLine < 8 ) ) {
                     upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex, false );
                     lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1, false );
                     palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );

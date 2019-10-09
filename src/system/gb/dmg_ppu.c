@@ -39,7 +39,6 @@ typedef struct regInfo_s {
 static void DmaRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     dmaTransferActive = true;
     dmaAddress = (uint16_t)val << 8;
-    fprintf( stderr, "start DMA transfer from 0x%04x (0x%02x00)\n", dmaAddress, val );
 }
 
 static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
@@ -54,8 +53,8 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
         return;
     }
 
-    printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
-    fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    //printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    //fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
     lcdc = val;
 
     enabled = ( ( lcdc & 0x80 ) != 0 );
@@ -90,7 +89,7 @@ static void Step( gbPpu_t *self ) {
 
     if ( dmaTransferActive ) {
         uint8_t val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, false );
-        self->cpu->bus->Write8( self->cpu->bus, 0xfe00 + (dmaAddress & 0xff), val, false );
+        self->oam->Write8( self->oam, dmaAddress & 0x00ff, val, false );
         dmaAddress++;
         if ( ( dmaAddress & 0x00ff ) > 0x9f ) {
             dmaTransferActive = false;
@@ -125,45 +124,66 @@ static void Step( gbPpu_t *self ) {
         uint8_t pixRow = bgRow % 8;
         uint16_t tileByteIndex = pixLine * 2;
 
-        uint8_t upperByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
-        uint8_t lowerByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
+        uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
+        uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
         uint8_t palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
         palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
         shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
 
+        // render sprites
         if ( ! dmaTransferActive ) {
-            uint8_t bestX = 168, bestY = 160, bestSprite = 255;
-            for ( int spriteNum = 16; spriteNum >= 0; spriteNum-- ) {
-                uint8_t spriteX = self->bgRam->Read8( self->oam, spriteNum * 4, false );
+            uint8_t numSprites = 0;
+            uint8_t bestSprites[40];
+            uint8_t bestX = 168, bestY = 160, bestSprite = 255, bestAttr = 0x00;
+            memset( bestSprites, 255, 40 );
+            for ( int spriteNum = 39; spriteNum >= 0; spriteNum-- ) {
+                uint8_t spriteX = self->oam->Read8( self->oam, ( spriteNum * 4 ) + 1, false );
+                uint8_t spriteAttr = self->bgRam->Read8( self->oam, ( spriteNum* 4 ) + 3, false );
                 if ( ! ( ( spriteX > 0 ) && ( spriteX < 168 ) && ( dotClock < spriteX ) && ( dotClock >= ( spriteX - 8 ) ) ) )
                     continue;
-                uint8_t spriteY = self->bgRam->Read8( self->oam, ( spriteNum * 4 ) + 1, false );
-                if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( dotClock < spriteY ) && ( dotClock >= ( spriteY - 16 ) ) ) )
+                uint8_t spriteY = self->oam->Read8( self->oam, ( spriteNum * 4 ), false );
+                if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( ly < ( ( bestAttr & 0x10 ) ? spriteY : spriteY ) - 8 ) && ( ly >= ( spriteY - 16 ) ) ) )
                     continue;
                 if ( spriteX > bestX )
                     continue;
                 bestX = spriteX;
                 bestY = spriteY;
                 bestSprite = spriteNum;
+                bestAttr = spriteAttr;
+                bestSprites[numSprites++] = bestSprite;
             }
-            if ( bestSprite != 255 ) {
+            tileDataBase = 0;
+            for ( int i = 0; i < 10; i++ ) {
+                bestSprite = bestSprites[i];
+                if ( bestSprite == 255 )
+                    break;
+                bestX = self->oam->Read8( self->oam, ( bestSprite * 4 ) + 1, false );
+                bestY = self->oam->Read8( self->oam, ( bestSprite * 4 ), false );
+                bestAttr = self->bgRam->Read8( self->oam, ( bestSprite* 4 ) + 3, false );
                 uint8_t spriteTile = self->bgRam->Read8( self->oam, ( bestSprite * 4 ) + 2, false );
-                uint8_t spriteAttr = self->bgRam->Read8( self->oam, ( bestSprite * 4 ) + 3, false );
-                uint8_t spritePixRow = bestX - dotClock;
-                uint8_t spritePixLine = bestY - ly;
-                if ( ( spriteAttr & 0x20 ) == 0 )
-                    spritePixLine = 7 - spritePixLine;
-                if ( ( spriteAttr & 0x40 ) == 0 )
+                uint8_t spritePixRow = bestX - dotClock - 1;
+                uint8_t spritePixLine = bestY - ly - 1;
+                if ( ( bestAttr & 0x20 ) == 0 )
                     spritePixRow = 7 - spritePixRow;
-                tileByteIndex = spritePixLine * 2;
-                upperByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
-                lowerByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
-                palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
-                palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
-                if ( ( spriteAttr & 0x10 ) == 0 )
-                    shade = ( objPal0 >> ( 2 * palIndex ) ) & 0x03;
-                else
-                    shade = ( objPal1 >> ( 2 * palIndex ) ) & 0x03;
+                if ( ( bestAttr & 0x40 ) == 0 )
+                    spritePixLine = 7 - spritePixLine;
+                if ( ( lcdc & 0x04 ) == 0 ) {
+                    spritePixLine += 8;
+                }
+                if ( ( ( lcdc & 0x04 ) == 1 ) || ( spritePixLine < 8 ) ) {
+                    tileByteIndex = spritePixLine * 2;
+                    upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex, false );
+                    lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1, false );
+                    palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
+                    palIndex |= ( ( lowerByte >> ( 7 - spritePixRow ) ) & 0x1 ) << 1;
+                    if ( palIndex != 0 ) {
+                        if ( ( bestAttr & 0x10 ) == 0 )
+                            shade = ( objPal0 >> ( 2 * palIndex ) ) & 0x03;
+                        else
+                            shade = ( objPal1 >> ( 2 * palIndex ) ) & 0x03;
+                        break;
+                    }
+                }
             }   
         }
 

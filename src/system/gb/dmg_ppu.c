@@ -17,6 +17,8 @@ static uint8_t scx, scy, wx, wy;
 static uint8_t ly, lyc;
 static uint8_t bgPal, objPal0, objPal1;
 static int16_t dotClock, dotDelay, dotDelayTotal;
+static bool dmaTransferActive = false;
+static uint16_t dmaAddress;
 
 static bool enabled;
 
@@ -32,6 +34,13 @@ typedef struct regInfo_s {
     size_t len;
     uint32_t* data;
 } regInfo_t;
+
+
+static void DmaRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+    dmaTransferActive = true;
+    dmaAddress = (uint16_t)val << 8;
+    fprintf( stderr, "start DMA transfer from 0x%04x (0x%02x00)\n", dmaAddress, val );
+}
 
 static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
     regInfo_t *reg;
@@ -58,6 +67,11 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
         } else {
             fprintf( stderr, "lcd disabled\n" );
         }
+        for ( int y = 0; y < 144; y++ ) {
+            for ( int x = 0; x < 160; x++ ) {
+                IO_DrawPixel( x, y, colors[0][0], colors[0][1], colors[0][2] );
+            }
+        }
         ly = 0;
         dotClock = dotDelay = dotDelayTotal = 0;
     }
@@ -67,14 +81,23 @@ static void Step( gbPpu_t *self ) {
     uint8_t shade;
     uint16_t tileDataBase = 0x0000, bgMapBase= 0x0000;
 
-    if ( !enabled )
-        return;
-
     lcdStat = lcdStat & 0xfc;
 
     if ( dotDelay > 0 ) {
         dotDelay--;
         return;
+    }
+
+    if ( dmaTransferActive ) {
+        uint8_t val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, false );
+        self->cpu->bus->Write8( self->cpu->bus, 0xfe00 + (dmaAddress & 0xff), val, false );
+        dmaAddress++;
+        if ( ( dmaAddress & 0x00ff ) > 0x9f ) {
+            dmaTransferActive = false;
+            if ( ( lcdStat & 0x20 ) != 0 ) {
+                self->cpu->Interrupt( self->cpu, 1 );
+            }
+        }
     }
 
     if ( ( dotClock < 160 ) && ( ly < 144 ) ) {
@@ -108,7 +131,44 @@ static void Step( gbPpu_t *self ) {
         palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
         shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
 
-        IO_DrawPixel( dotClock, ly, colors[shade][0], colors[shade][1], colors[shade][2] );
+        if ( ! dmaTransferActive ) {
+            uint8_t bestX = 168, bestY = 160, bestSprite = 255;
+            for ( int spriteNum = 16; spriteNum >= 0; spriteNum-- ) {
+                uint8_t spriteX = self->bgRam->Read8( self->oam, spriteNum * 4, false );
+                if ( ! ( ( spriteX > 0 ) && ( spriteX < 168 ) && ( dotClock < spriteX ) && ( dotClock >= ( spriteX - 8 ) ) ) )
+                    continue;
+                uint8_t spriteY = self->bgRam->Read8( self->oam, ( spriteNum * 4 ) + 1, false );
+                if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( dotClock < spriteY ) && ( dotClock >= ( spriteY - 16 ) ) ) )
+                    continue;
+                if ( spriteX > bestX )
+                    continue;
+                bestX = spriteX;
+                bestY = spriteY;
+                bestSprite = spriteNum;
+            }
+            if ( bestSprite != 255 ) {
+                uint8_t spriteTile = self->bgRam->Read8( self->oam, ( bestSprite * 4 ) + 2, false );
+                uint8_t spriteAttr = self->bgRam->Read8( self->oam, ( bestSprite * 4 ) + 3, false );
+                uint8_t spritePixRow = bestX - dotClock;
+                uint8_t spritePixLine = bestY - ly;
+                if ( ( spriteAttr & 0x20 ) == 0 )
+                    spritePixLine = 7 - spritePixLine;
+                if ( ( spriteAttr & 0x40 ) == 0 )
+                    spritePixRow = 7 - spritePixRow;
+                tileByteIndex = spritePixLine * 2;
+                upperByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
+                lowerByte = self->bgRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
+                palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+                palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
+                if ( ( spriteAttr & 0x10 ) == 0 )
+                    shade = ( objPal0 >> ( 2 * palIndex ) ) & 0x03;
+                else
+                    shade = ( objPal1 >> ( 2 * palIndex ) ) & 0x03;
+            }   
+        }
+
+        if ( enabled )
+            IO_DrawPixel( dotClock, ly, colors[shade][0], colors[shade][1], colors[shade][2] );
         lcdStat |= 0x03;
     } else if ( ly < 144 ) {
         if ( dotClock == 160 ) {
@@ -146,13 +206,14 @@ static void Step( gbPpu_t *self ) {
     }
 }
 
-gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *cRam ) {
+gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *cRam, busDevice_t *oam ) {
     gbPpu_t *ppu = malloc( sizeof( gbPpu_t ) );
     ppu->Step = Step;
     ppu->cpu = cpu;
     ppu->bgRam = bgRam;
     ppu->cRam = cRam;
-    IO_Init( 640, 576, 160, 144 );
+    ppu->oam = oam;
+    IO_Init( 640 + 32, 576 + 32, 160, 144 );
     IO_SetBg( 0xf0, 0xf0, 0xd0 );
 
     enabled = true;
@@ -166,6 +227,7 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     GenericBusMapping( bus, "SCX", 0xFF43, 0xFF43, GenericRegister( "SCX", &scx, 1, NULL, NULL ) );
     GenericBusMapping( bus, "LY", 0xFF44, 0xFF44, GenericRegister( "LY", &ly, 1, NULL, NULL ) );
     GenericBusMapping( bus, "LYC", 0xFF45, 0xFF45, GenericRegister( "LYC", &lyc, 1, NULL, NULL ) );
+    GenericBusMapping( bus, "OamDma", 0xFF46, 0xFF46, GenericRegister( "OamDma", NULL, 1, NULL, DmaRegisterWrite ) );
     GenericBusMapping( bus, "BGP", 0xFF47, 0xFF47, GenericRegister( "BGP", &bgPal, 1, NULL, NULL ) );
     GenericBusMapping( bus, "OBP0", 0xFF48, 0xFF48, GenericRegister( "OBP0", &objPal0, 1, NULL, NULL ) );
     GenericBusMapping( bus, "OBP1", 0xFF49, 0xFF49, GenericRegister( "OBP1", &objPal1, 1, NULL, NULL ) );

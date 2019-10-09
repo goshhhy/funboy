@@ -58,8 +58,6 @@ void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "WavRam14",        0xFF3E, 1 );
     REGISTER( gbbus, "WavRam15",        0xFF3F, 1 );
 
-    REGISTER( gbbus, "DMATx",           0xFF46, 1 );
-    
     REGISTER( gbbus, "IntFlag",         0xFF0F, 1 );
     REGISTER( gbbus, "IntEnable",       0xFFFF, 1 );
 }
@@ -93,7 +91,7 @@ int main( int argc, char **argv ) {
 
     sm83_t *cpu = Sm83( gbbus );
     gbTimer_t *timer = GbTimer( gbbus, cpu );
-    gbPpu_t *ppu = GbPpu( gbbus, cpu, bgram, cram );
+    gbPpu_t *ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
 
     while ( go ) {
         for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {

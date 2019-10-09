@@ -11,6 +11,8 @@ SDL_Surface* windowSurf = NULL;
 SDL_Surface* renderSurf = NULL;
 SDL_Surface* pixelSurf = NULL;
 
+static bool border = true;
+static int borderSize = 4;
 int renderScale = 4;
 int useScanLines = 0;
 int useDotsFilter = 1;
@@ -28,10 +30,10 @@ void IO_SetRenderRes( int x, int y ) {
 	if ( screen )
 		free( screen );
 
-	screen = malloc( ( x * y * sizeof( int ) * 3 ) * 2 );
+	screen = malloc( ( ( x + ( 2 * borderSize ) ) * ( y + ( 2 * borderSize ) )* sizeof( int ) * 3 ) * 2 );
 
 	if ( screen == NULL ) {
-		fprintf( stderr, "failedS to alloc screen memory\n" );
+		fprintf( stderr, "failed to alloc screen memory\n" );
 		exit( 1 ); 
 	}
 }
@@ -43,7 +45,7 @@ void IO_SetBg( uint8_t r, uint8_t g, uint8_t b ) {
 }
 
 int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight ) {
-	window = SDL_CreateWindow( "kutaragi!", -1, -1, wWidth, wHeight, SDL_WINDOW_RESIZABLE );
+	window = SDL_CreateWindow( "kutaragi!", -1, -1, wWidth, wHeight, 0 );
 	if ( !window ) {
 		printf( "failed to create window\n" );
 		return 1;
@@ -52,7 +54,7 @@ int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight ) {
 	IO_SetRenderRes( rWidth, rHeight );
 
 	windowSurf = SDL_GetWindowSurface( window );
-	renderSurf = SDL_CreateRGBSurface( 0, rWidth * renderScale, rHeight * renderScale, 32, 0xFF, 0xFF << 8, 0xFF << 16, 0xFF << 24 );
+	renderSurf = SDL_CreateRGBSurface( 0, ( rWidth + ( 2 * borderSize ) ) * renderScale, ( rHeight + ( 2 * borderSize ) ) * renderScale, 32, 0xFF, 0xFF << 8, 0xFF << 16, 0xFF << 24 );
 	pixelSurf = SDL_CreateRGBSurface( 0, 1 * renderScale, 1 * renderScale, 32, 0xFF, 0xFF << 8, 0xFF << 16, 0xFF << 24 );
 
 	SDL_FillRect( windowSurf, NULL, SDL_MapRGB( windowSurf->format, 0x00, 0x00, 0x00 ) );
@@ -71,7 +73,9 @@ void IO_DrawPixel( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {
 
 void IO_ScreenCopy( void ) {
 	int x, y, r, g, b;
-
+	
+	SDL_FillRect( renderSurf, NULL, SDL_MapRGB( renderSurf->format, bgRed, bgGreen, bgBlue ) );
+	
 	for( y = 0; y < renderHeight; y++ ) {
 		for ( x = 0; x < renderWidth; x++ ) {
 			r = screen[(renderWidth * y * 3) + (x * 3) + 0];
@@ -80,8 +84,8 @@ void IO_ScreenCopy( void ) {
 
 			SDL_Rect dim = { 0, 0, 0, 0 };
 			
-			dim.x = x * renderScale;
-			dim.y = y * renderScale;
+			dim.x = ( x + borderSize ) * renderScale;
+			dim.y = ( y + borderSize ) * renderScale;
 			
 			if ( useDotsFilter && ( renderScale > 2 ) ) {
 				uint8_t averaged_r = ( (uint16_t)r + (uint16_t)r + (uint16_t)bgRed ) / 3;
@@ -89,11 +93,11 @@ void IO_ScreenCopy( void ) {
 				uint8_t averaged_b = ( (uint16_t)b + (uint16_t)b + (uint16_t)bgBlue ) / 3;
 
 				SDL_Rect dim2 = { 0, 0, 1 * renderScale - 1, 1 * renderScale};
-				dim2.x = x * renderScale + (renderScale - 1);
-				dim2.y = y * renderScale;
+				dim2.x = ( x + borderSize ) * renderScale + (renderScale - 1);
+				dim2.y = ( y + borderSize ) * renderScale;
 				SDL_Rect dim3 = { 0, 0, 1 * renderScale, 1 * renderScale - 1 };
-				dim3.x = x * renderScale;
-				dim3.y = y * renderScale + (renderScale - 1);
+				dim3.x = ( x + borderSize ) * renderScale;
+				dim3.y = ( y + borderSize ) * renderScale + (renderScale - 1);
 				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, r, g, b ) );
 				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim );
 				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, averaged_r, averaged_g, averaged_b ) );

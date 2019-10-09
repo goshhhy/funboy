@@ -5,6 +5,8 @@
 
 #include "device.h"
 
+bool printSteps = false;
+
 typedef struct regInfo_s {
     char* name;
     size_t len;
@@ -22,7 +24,8 @@ static uint8_t GenericRegisterRead( busDevice_t *dev, uint32_t addr, bool final 
         fprintf( stderr, "warning: GenericRegisterRead: address out of bounds\n" );
         return 0;
     }
-    printf( "read register [0x%08x]%s:%08x\n", addr, reg->name, *reg->data  );
+    if ( printSteps )
+        printf( "read register [0x%08x]%s:%08x\n", addr, reg->name, *reg->data  );
     if ( reg->data ) {
         return reg->data[addr];
     }
@@ -42,7 +45,8 @@ static void GenericRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
         return;
     }
 
-    fprintf( stdout, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    if ( printSteps )
+        fprintf( stdout, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
     if ( reg->data ) {
         reg->data[addr] = val;
     }

@@ -13,6 +13,8 @@
 #define read8( cpu, addr, final ) cpu->bus->Read8( cpu->bus, addr, final )
 #define read16( cpu, addr, final ) ( ( cpu->bus->Read8( cpu->bus, addr + 1, false ) << 8 ) + cpu->bus->Read8( cpu->bus, addr, final ) )
 
+extern bool printSteps;
+
 typedef enum {
     LD_MODE_B  = 0,
     LD_MODE_C  = 1,
@@ -221,7 +223,6 @@ static void la16( sm83_t *cpu ) {
 
 static void jp( sm83_t* cpu ) {
     uint16_t dest = read16( cpu, cpu->pc + 1, true );
-    printf( "jump to %04x\n", dest );
     cpu->pc = dest - 1;
 }
 
@@ -306,7 +307,6 @@ static void psh( sm83_t *cpu ) {
 }
 
 static void edi( sm83_t *cpu ) {
-    fprintf( stderr, "edi: %02x: interrupts %s\n", cpu->op.full, cpu->op.q ? "ENABLED" : "DISABLED" );
     cpu->ifl = cpu->op.q;
 }
 
@@ -513,6 +513,7 @@ static void Step( sm83_t *cpu ) {
     if ( ( cpu->ifl == 1 ) || ( cpu->halted ) ) {
         active = ( read8( cpu, 0xffff, false ) & read8( cpu, 0xff0f, false ) ) & 0x1F; 
         if ( active ) {
+            printf("running interrupt\n");
             pushw( cpu, cpu->pc );
             cpu->halted = false;
             cpu->ifl = 0;

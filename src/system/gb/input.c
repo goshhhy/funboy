@@ -48,7 +48,7 @@ static uint8_t JoyRegisterRead( busDevice_t *dev, uint32_t addr, bool final ) {
 }
 
 static void KeyPressCallback( int key ) {
-    printf( "key %i pressed\n", key );
+    //printf( "key %i pressed\n", key );
     switch ( key ) {
         case 79: // right
             padStatus = padStatus & 0xfe;
@@ -80,7 +80,7 @@ static void KeyPressCallback( int key ) {
 }
 
 static void KeyReleaseCallback( int key ) {
-    printf( "key %i released\n", key );
+    //printf( "key %i released\n", key );
     switch ( key ) {
         case 79: // right
             padStatus = padStatus | 0x01;

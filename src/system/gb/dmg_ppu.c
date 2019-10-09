@@ -78,7 +78,7 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
 
 static void Step( gbPpu_t *self ) {
     uint8_t shade;
-    uint16_t tileDataBase = 0x0000, bgMapBase= 0x0000;
+    uint16_t tileDataBase = 0x0000, bgMapBase= 0x0000, winMapBase = 0x0000;
 
     lcdStat = lcdStat & 0xfc;
 
@@ -103,34 +103,70 @@ static void Step( gbPpu_t *self ) {
         if ( ( lcdc & 0x10 ) == 0 ) {
             tileDataBase += 0x800;
         }
-        if ( ( lcdc & 0x08 ) == 1 ) {
-            bgMapBase += 0x400;
+        //
+        // render background
+        //
+        if ( ( lcdc & 0x01 ) != 0 ) {
+            if ( ( lcdc & 0x08 ) != 0 ) {
+                bgMapBase = 0x400;
+            }
+            uint8_t bgLine = scy + ly;
+            uint8_t bgRow = scx + dotClock;
+            uint8_t tileLine = bgLine / 8;
+            uint8_t tileRow = bgRow / 8;
+            uint16_t tileOffset = ( (uint16_t)tileLine * (uint16_t)32 ) + (uint16_t)tileRow;
+            uint8_t tileNum = self->bgRam->Read8( self->bgRam, bgMapBase + tileOffset, false ); 
+
+            if ( ( lcdc & 0x10 ) == 0 ) {
+                int8_t tileFix = (int8_t)tileNum;
+                tileFix = tileFix + 128;
+                tileNum = tileFix;
+            }
+
+            uint8_t pixLine = bgLine % 8;
+            uint8_t pixRow = bgRow % 8;
+            uint16_t tileByteIndex = pixLine * 2;
+
+            uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
+            uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
+            uint8_t palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+            palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
+            shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
         }
-        // calculate bg pixel
-        uint8_t bgLine = scy + ly;
-        uint8_t bgRow = scx + dotClock;
-        uint8_t tileLine = bgLine / 8;
-        uint8_t tileRow = bgRow / 8;
-        uint16_t tileOffset = ( (uint16_t)tileLine * (uint16_t)32 ) + (uint16_t)tileRow;
-        uint8_t tileNum = self->bgRam->Read8( self->bgRam, bgMapBase + tileOffset, false ); 
+        //
+        // render window
+        //
+        uint16_t bgLine = ly - wy - 1;
+        uint16_t bgRow = dotClock - ( wx - 8 );
+        if ( ( ( lcdc & 0x20 ) != 0 ) && ( wx >= 0 ) && ( wy >= 0 ) && ( wx < 167 ) & ( wy < 144 ) &&
+                            ( bgLine >= 0 ) && ( bgLine < 144 ) && ( bgRow >= 0 ) && ( bgRow < 161 ) ) {
+            if ( ( lcdc & 0x40 ) != 0 ) {
+                winMapBase = 0x400;
+            }
+            uint8_t tileLine = bgLine / 8;
+            uint8_t tileRow = bgRow / 8;
+            uint16_t tileOffset = ( (uint16_t)tileLine * (uint16_t)32 ) + (uint16_t)tileRow;
+            uint8_t tileNum = self->bgRam->Read8( self->bgRam, winMapBase + tileOffset, false ); 
 
-        if ( ( lcdc & 0x10 ) == 0 ) {
-            int8_t tileFix = (int8_t)tileNum;
-            tileFix = tileFix + 128;
-            tileNum = tileFix;
+            if ( ( lcdc & 0x10 ) == 0 ) {
+                int8_t tileFix = (int8_t)tileNum;
+                tileFix = tileFix + 128;
+                tileNum = tileFix;
+            }
+
+            uint8_t pixLine = bgLine % 8;
+            uint8_t pixRow = bgRow % 8;
+            uint16_t tileByteIndex = pixLine * 2;
+
+            uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
+            uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
+            uint8_t palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+            palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
+            shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
         }
-
-        uint8_t pixLine = bgLine % 8;
-        uint8_t pixRow = bgRow % 8;
-        uint16_t tileByteIndex = pixLine * 2;
-
-        uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
-        uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
-        uint8_t palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
-        palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
-        shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
-
+        //
         // render sprites
+        //
         if ( ! dmaTransferActive ) {
             uint8_t numSprites = 0;
             uint8_t bestSprites[40];
@@ -172,11 +208,11 @@ static void Step( gbPpu_t *self ) {
                         spritePixLine = ( 15 - spritePixLine );
                     }
                 }
-                tileByteIndex = spritePixLine * 2;
+                uint8_t tileByteIndex = spritePixLine * 2;
                 if ( ( ( lcdc & 0x04 ) != 0 ) || ( spritePixLine < 8 ) ) {
-                    upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex, false );
-                    lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1, false );
-                    palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
+                    uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex, false );
+                    uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1, false );
+                    uint8_t palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
                     palIndex |= ( ( lowerByte >> ( 7 - spritePixRow ) ) & 0x1 ) << 1;
                     if ( palIndex != 0 ) {
                         if ( ( bestAttr & 0x10 ) == 0 )

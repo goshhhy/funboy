@@ -20,8 +20,8 @@ static bool enabled;
 static uint8_t divReg;
 static uint8_t divSubcount;
 static uint8_t countReg;
-static uint16_t countSubcount;
-static uint16_t divisor;
+static uint8_t countSubcount;
+static uint8_t divisor;
 static uint8_t modulo;
 static uint8_t control;
 static bool overflowed;
@@ -67,13 +67,10 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
 static void Step( gbTimer_t *self ) {
     uint8_t selectors_pre[4] = { 0, 0, 0, 0 }, selectors_post[4] = { 0, 0, 0, 0 };
     
-    if ( !enabled )
-        return;
-
-    if ( overflowed ) {
+    if ( enabled && overflowed ) {
         if ( ( self->cpu->bus->Read8( self->cpu->bus, 0xff0f, false ) & 0x04 ) == 0 ) {
-            printf( "timer interrupt!\n" );
-            fprintf( stderr, "timer interrupt!\n" ); 
+            //printf( "timer interrupt!\n" );
+            //fprintf( stderr, "timer interrupt!\n" ); 
             self->cpu->Interrupt( self->cpu, 2 );
         }
         countReg = modulo;
@@ -89,6 +86,9 @@ static void Step( gbTimer_t *self ) {
     if ( divSubcount == 0 ) {
         divReg++;
     }
+
+    if ( !enabled )
+        return;
 
     selectors_post[0] = ( divReg & 0x02 ) >> 1;
     selectors_post[1] = ( divSubcount & 0x08 ) >> 3;

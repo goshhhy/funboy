@@ -59,12 +59,12 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
 
     enabled = ( ( lcdc & 0x80 ) != 0 );
     if ( enabled ) {
-        fprintf( stderr, "lcd enabled\n" );
+        ;; //fprintf( stderr, "lcd enabled\n" );
     } else {
         if ( ly < 144 ) {
             fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
         } else {
-            fprintf( stderr, "lcd disabled\n" );
+            ;; //fprintf( stderr, "lcd disabled\n" );
         }
         for ( int y = 0; y < 144; y++ ) {
             for ( int x = 0; x < 160; x++ ) {

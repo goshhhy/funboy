@@ -44,7 +44,7 @@ static void SerialRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, b
         return;
     }
 
-    printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    //printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
     if ( reg->data ) {
         reg->data[addr] = val;
     }

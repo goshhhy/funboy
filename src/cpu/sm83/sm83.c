@@ -353,7 +353,6 @@ static void jphl( sm83_t *cpu ) {
 
 static void lhlsi( sm83_t *cpu ) {
     int8_t val = (int8_t)read8( cpu, ++cpu->pc, true );
-    printf("e8 is %hhi\n", val );
     cpu->hl = (int16_t)cpu->sp + val;
     SetFlags( cpu, 0, 0, ( cpu->hl & 0xf ) < ( cpu->sp & 0xf ), ( cpu->hl & 0xff ) < ( cpu->sp & 0xff ) );
 }
@@ -503,7 +502,7 @@ static void Step( sm83_t *cpu ) {
 
     if ( ! cpu->halted ) {
         uint16_t imm16 = read16(cpu, cpu->pc+1, false);
-        printf("[%04x] af:%04x bc:%04x de: %04x hl: %04x sp: %04x op: %02x imm16: %02x\n", cpu->pc, cpu->af, cpu->bc, cpu->de, cpu->hl, cpu->sp, cpu->op.full, imm16 );
+        //printf("[%04x] af:%04x bc:%04x de: %04x hl: %04x sp: %04x op: %02x imm16: %02x\n", cpu->pc, cpu->af, cpu->bc, cpu->de, cpu->hl, cpu->sp, cpu->op.full, imm16 );
 
         ops[cpu->op.full]( cpu );
         cpu->pc++;
@@ -513,7 +512,7 @@ static void Step( sm83_t *cpu ) {
     if ( ( cpu->ifl == 1 ) || ( cpu->halted ) ) {
         active = ( read8( cpu, 0xffff, false ) & read8( cpu, 0xff0f, false ) ) & 0x1F; 
         if ( active ) {
-            printf("running interrupt\n");
+            //printf("running interrupt\n");
             pushw( cpu, cpu->pc );
             cpu->halted = false;
             cpu->ifl = 0;

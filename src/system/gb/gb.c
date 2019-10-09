@@ -10,14 +10,13 @@
 
 #include "timer.h"
 #include "ppu.h"
+#include "input.h"
 
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
 #define GB_CLOCK_SPEED 4194304
 
 void MapGbRegs( busDevice_t* gbbus ) {
-    REGISTER( gbbus, "JoyIn",           0xFF00, 1 );
-
     REGISTER( gbbus, "SndCh1Sweep",     0xFF10, 1 );
     REGISTER( gbbus, "SndCh1Len",       0xFF11, 1 );
     REGISTER( gbbus, "SndCh1Vol",       0xFF12, 1 );
@@ -92,6 +91,7 @@ int main( int argc, char **argv ) {
     sm83_t *cpu = Sm83( gbbus );
     gbTimer_t *timer = GbTimer( gbbus, cpu );
     gbPpu_t *ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
+    GbInput( gbbus, cpu );
 
     while ( go ) {
         for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {

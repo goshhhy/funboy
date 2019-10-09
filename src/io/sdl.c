@@ -23,6 +23,9 @@ int renderWidth, renderHeight;
 
 int* screen = NULL;
 
+void (*KeyPressCallback)( int key ) = NULL;
+void (*KeyReleaseCallback)( int key ) = NULL;
+
 void IO_SetRenderRes( int x, int y ) {
 	renderWidth = x;
 	renderHeight = y;
@@ -120,12 +123,20 @@ void IO_ScreenCopy( void ) {
 	}
 }
 
+void IO_SetKeyPressCallback( void (*Callback)( int key ) ) {
+	KeyPressCallback = Callback;
+}
+
+void IO_SetKeyReleaseCallback( void (*Callback)( int key ) ) {
+	KeyReleaseCallback = Callback;	
+}
+
 bool IO_Update( void ) {
 	SDL_Event e;
 	static int updates = 0;
 	bool r = true;
 
-	printf( "begin video update %i\n", updates++ );
+	//printf( "begin video update %i\n", updates++ );
 	IO_ScreenCopy();
 	
 	if ( SDL_BlitScaled( renderSurf, NULL, windowSurf, NULL ) )	
@@ -139,6 +150,14 @@ bool IO_Update( void ) {
 				break;
 			case SDL_WINDOWEVENT_RESIZED:
 				windowSurf = SDL_GetWindowSurface( window );
+				break;
+			case SDL_KEYDOWN:
+				if ( KeyPressCallback )
+					KeyPressCallback( e.key.keysym.scancode );
+				break;
+			case SDL_KEYUP:
+				if ( KeyReleaseCallback )
+					KeyReleaseCallback( e.key.keysym.scancode );
 				break;
 			default:
 				break;

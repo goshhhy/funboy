@@ -19,6 +19,7 @@ executable('kutaragi-gb', ['src/io/sdl.c', 'src/cpu/sm83/sm83.c',
                          'src/device/generic_bus.c', 'src/device/generic_register.c',
                          'src/system/gb/gb.c', 'src/system/gb/serial_log.c',
                          'src/system/gb/timer.c', 'src/system/gb/dmg_ppu.c',
+                         'src/system/gb/input.c',
                         ], dependencies : [sdl2], install : true)
 
 executable('kutaragi-vic20', ['src/io/sdl.c', 'src/cpu/mos6502/mos6502.c', 

@@ -1,0 +1,1 @@
+gameboy emulator but it do a faster

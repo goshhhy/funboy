@@ -1,6 +1,3 @@
-/* please dont use this code as a "good example" of anything 
- * most people will probably hate it, i know */
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

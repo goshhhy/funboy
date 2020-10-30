@@ -1,0 +1,1 @@
+void SerialToStderr( busDevice_t* bus );

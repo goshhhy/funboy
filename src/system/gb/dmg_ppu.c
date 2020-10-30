@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -10,19 +8,19 @@
 #include "../../io/io.h"
 #include "ppu.h"
 
-// register values
-static uint8_t lcdc;
-static uint8_t lcdStat;
-static uint8_t scx, scy, wx, wy;
-static uint8_t ly, lyc;
-static uint8_t bgPal, objPal0, objPal1;
-static int16_t dotClock, dotDelay, dotDelayTotal;
-static bool dmaTransferActive = false;
-static uint16_t dmaAddress;
+/*  register values */
+static unsigned char lcdc;
+static unsigned char lcdStat;
+static unsigned char scx, scy, wx, wy;
+static unsigned char ly, lyc;
+static unsigned char bgPal, objPal0, objPal1;
+static short dotClock, dotDelay, dotDelayTotal;
+static int dmaTransferActive = 0;
+static unsigned short dmaAddress;
+ 
+static int enabled;
 
-static bool enabled;
-
-uint8_t colors[4][3] = {
+unsigned char colors[4][3] = {
 	{ 0xe7, 0xe7, 0xc7 },
 	{ 0xc3, 0xc3, 0xa3 },
 	{ 0x9b, 0x9b, 0x8b },
@@ -32,17 +30,18 @@ uint8_t colors[4][3] = {
 typedef struct regInfo_s {
     char* name;
     size_t len;
-    uint32_t* data;
+    unsigned long* data;
 } regInfo_t;
 
 
-static void DmaRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
-    dmaTransferActive = true;
-    dmaAddress = (uint16_t)val << 8;
+static void DmaRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+    dmaTransferActive = 1;
+    dmaAddress = (unsigned short)val << 8;
 }
 
-static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     regInfo_t *reg;
+    int x, y;
 
     if ( !dev || !dev->data )
         return;
@@ -53,21 +52,21 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
         return;
     }
 
-    //printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
-    //fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    /* printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr ); */
+    /* fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr ); */
     lcdc = val;
 
     enabled = ( ( lcdc & 0x80 ) != 0 );
     if ( enabled ) {
-        ;; //fprintf( stderr, "lcd enabled\n" );
+        ;; /* fprintf( stderr, "lcd enabled\n" ); */
     } else {
         if ( ly < 144 ) {
             fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
         } else {
-            ;; //fprintf( stderr, "lcd disabled\n" );
+            ;; /* fprintf( stderr, "lcd disabled\n" ); */
         }
-        for ( int y = 0; y < 144; y++ ) {
-            for ( int x = 0; x < 160; x++ ) {
+        for ( y = 0; y < 144; y++ ) {
+            for ( x = 0; x < 160; x++ ) {
                 IO_DrawPixel( x, y, colors[0][0], colors[0][1], colors[0][2] );
             }
         }
@@ -77,8 +76,9 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
 }
 
 static void Step( gbPpu_t *self ) {
-    uint8_t shade;
-    uint16_t tileDataBase = 0x0000, bgMapBase= 0x0000, winMapBase = 0x0000;
+    unsigned char shade = 0;
+    unsigned short tileDataBase = 0x0000, bgMapBase= 0x0000, winMapBase = 0x0000;
+    int i;
 
     lcdStat = lcdStat & 0xfc;
 
@@ -88,11 +88,11 @@ static void Step( gbPpu_t *self ) {
     }
 
     if ( dmaTransferActive ) {
-        uint8_t val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, false );
-        self->oam->Write8( self->oam, dmaAddress & 0x00ff, val, false );
+        unsigned char val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, 0 );
+        self->oam->Write8( self->oam, dmaAddress & 0x00ff, val, 0 );
         dmaAddress++;
         if ( ( dmaAddress & 0x00ff ) > 0x9f ) {
-            dmaTransferActive = false;
+            dmaTransferActive = 0;
             if ( ( lcdStat & 0x20 ) != 0 ) {
                 self->cpu->Interrupt( self->cpu, 1 );
             }
@@ -100,84 +100,91 @@ static void Step( gbPpu_t *self ) {
     }
 
     if ( ( dotClock < 160 ) && ( ly < 144 ) ) {
+        unsigned short bgLine, bgRow;
         if ( ( lcdc & 0x10 ) == 0 ) {
             tileDataBase += 0x800;
         }
-        //
-        // render background
-        //
+        /*  */
+        /*  render background */
+        /*  */
         if ( ( lcdc & 0x01 ) != 0 ) {
+            unsigned char tileLine, tileRow, tileNum, pixLine, pixRow, upperByte, lowerByte, palIndex;
+            unsigned short tileOffset, tileByteIndex;
             if ( ( lcdc & 0x08 ) != 0 ) {
                 bgMapBase = 0x400;
             }
-            uint8_t bgLine = scy + ly;
-            uint8_t bgRow = scx + dotClock;
-            uint8_t tileLine = bgLine / 8;
-            uint8_t tileRow = bgRow / 8;
-            uint16_t tileOffset = ( (uint16_t)tileLine * (uint16_t)32 ) + (uint16_t)tileRow;
-            uint8_t tileNum = self->bgRam->Read8( self->bgRam, bgMapBase + tileOffset, false ); 
+            bgLine = scy + ly;
+            bgRow = scx + dotClock;
+            tileLine = bgLine / 8;
+            tileRow = bgRow / 8;
+            tileOffset = ( (unsigned short)tileLine * (unsigned short)32 ) + (unsigned short)tileRow;
+            tileNum = self->bgRam->Read8( self->bgRam, bgMapBase + tileOffset, 0 ); 
 
             if ( ( lcdc & 0x10 ) == 0 ) {
-                int8_t tileFix = (int8_t)tileNum;
+                char tileFix = (char)tileNum;
                 tileFix = tileFix + 128;
                 tileNum = tileFix;
             }
 
-            uint8_t pixLine = bgLine % 8;
-            uint8_t pixRow = bgRow % 8;
-            uint16_t tileByteIndex = pixLine * 2;
+            pixLine = bgLine % 8;
+            pixRow = bgRow % 8;
+            tileByteIndex = pixLine * 2;
 
-            uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
-            uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
-            uint8_t palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+            upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, 0 );
+            lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, 0 );
+            palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
             palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
             shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
         }
-        //
-        // render window
-        //
-        uint16_t bgLine = ly - wy - 1;
-        uint16_t bgRow = dotClock - ( wx - 8 );
+        /*  */
+        /*  render window */
+        /*  */
+        bgLine = ly - wy - 1;
+        bgRow = dotClock - ( wx - 8 );
         if ( ( ( lcdc & 0x20 ) != 0 ) && ( wx >= 0 ) && ( wy >= 0 ) && ( wx < 167 ) & ( wy < 144 ) &&
                             ( bgLine >= 0 ) && ( bgLine < 144 ) && ( bgRow >= 0 ) && ( bgRow < 161 ) ) {
+            unsigned char tileLine, tileRow, tileNum, pixLine, pixRow, upperByte, lowerByte, palIndex;
+            unsigned short tileOffset, tileByteIndex;
             if ( ( lcdc & 0x40 ) != 0 ) {
                 winMapBase = 0x400;
             }
-            uint8_t tileLine = bgLine / 8;
-            uint8_t tileRow = bgRow / 8;
-            uint16_t tileOffset = ( (uint16_t)tileLine * (uint16_t)32 ) + (uint16_t)tileRow;
-            uint8_t tileNum = self->bgRam->Read8( self->bgRam, winMapBase + tileOffset, false ); 
+            tileLine = bgLine / 8;
+            tileRow = bgRow / 8;
+            tileOffset = ( (unsigned short)tileLine * (unsigned short)32 ) + (unsigned short)tileRow;
+            tileNum = self->bgRam->Read8( self->bgRam, winMapBase + tileOffset, 0 ); 
 
             if ( ( lcdc & 0x10 ) == 0 ) {
-                int8_t tileFix = (int8_t)tileNum;
+                char tileFix = (char)tileNum;
                 tileFix = tileFix + 128;
                 tileNum = tileFix;
             }
 
-            uint8_t pixLine = bgLine % 8;
-            uint8_t pixRow = bgRow % 8;
-            uint16_t tileByteIndex = pixLine * 2;
+            pixLine = bgLine % 8;
+            pixRow = bgRow % 8;
+            tileByteIndex = pixLine * 2;
 
-            uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, false );
-            uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, false );
-            uint8_t palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+            upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, 0 );
+            lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, 0 );
+            palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
             palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
             shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
         }
-        //
-        // render sprites
-        //
+        /*  */
+        /*  render sprites */
+        /*  */
         if ( ! dmaTransferActive ) {
-            uint8_t numSprites = 0;
-            uint8_t bestSprites[40];
-            uint8_t bestX = 168, bestY = 160, bestSprite = 255, bestAttr = 0x00;
+            unsigned char numSprites = 0;
+            unsigned char bestSprites[40];
+            unsigned char bestX = 168, bestY = 160, bestSprite = 255, bestAttr = 0x00;
+            int spriteNum;
+
             memset( bestSprites, 255, 40 );
-            for ( int spriteNum = 39; spriteNum >= 0; spriteNum-- ) {
-                uint8_t spriteX = self->oam->Read8( self->oam, ( spriteNum * 4 ) + 1, false );
-                uint8_t spriteAttr = self->bgRam->Read8( self->oam, ( spriteNum* 4 ) + 3, false );
+            for ( spriteNum = 39; spriteNum >= 0; spriteNum-- ) {
+                unsigned char spriteY, spriteX = self->oam->Read8( self->oam, ( spriteNum * 4 ) + 1, 0 );
+                unsigned char spriteAttr = self->bgRam->Read8( self->oam, ( spriteNum* 4 ) + 3, 0 );
                 if ( ! ( ( spriteX > 0 ) && ( spriteX < 168 ) && ( dotClock < spriteX ) && ( dotClock >= ( spriteX - 8 ) ) ) )
                     continue;
-                uint8_t spriteY = self->oam->Read8( self->oam, ( spriteNum * 4 ), false );
+                spriteY = self->oam->Read8( self->oam, ( spriteNum * 4 ), 0 );
                 if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( ly < spriteY  ) && ( ly >= ( spriteY - 16 ) ) ) )
                     continue;
                 if ( spriteX > bestX )
@@ -189,16 +196,21 @@ static void Step( gbPpu_t *self ) {
                 bestSprites[numSprites++] = bestSprite;
             }
             tileDataBase = 0;
-            for ( int i = 0; i < 10; i++ ) {
+            for ( i = 0; i < 10; i++ ) {
+                unsigned char spriteTile;
+                unsigned char spritePixRow;
+                unsigned char spritePixLine;
+                unsigned char tileByteIndex;
+
                 bestSprite = bestSprites[i];
                 if ( bestSprite == 255 )
                     break;
-                bestX = self->oam->Read8( self->oam, ( bestSprite * 4 ) + 1, false );
-                bestY = self->oam->Read8( self->oam, ( bestSprite * 4 ), false );
-                bestAttr = self->bgRam->Read8( self->oam, ( bestSprite* 4 ) + 3, false );
-                uint8_t spriteTile = self->bgRam->Read8( self->oam, ( bestSprite * 4 ) + 2, false );
-                uint8_t spritePixRow = bestX - dotClock - 1;
-                uint8_t spritePixLine = bestY - ly - 1;
+                bestX = self->oam->Read8( self->oam, ( bestSprite * 4 ) + 1, 0 );
+                bestY = self->oam->Read8( self->oam, ( bestSprite * 4 ), 0 );
+                bestAttr = self->bgRam->Read8( self->oam, ( bestSprite* 4 ) + 3, 0 );
+                spriteTile = self->bgRam->Read8( self->oam, ( bestSprite * 4 ) + 2, 0 );
+                spritePixRow = bestX - dotClock - 1;
+                spritePixLine = bestY - ly - 1;
                 if ( ( bestAttr & 0x20 ) == 0 )
                     spritePixRow = 7 - spritePixRow;
                 if ( ( bestAttr & 0x40 ) == 0 ) {
@@ -208,11 +220,11 @@ static void Step( gbPpu_t *self ) {
                         spritePixLine = ( 15 - spritePixLine );
                     }
                 }
-                uint8_t tileByteIndex = spritePixLine * 2;
+                tileByteIndex = spritePixLine * 2;
                 if ( ( ( lcdc & 0x04 ) != 0 ) || ( spritePixLine < 8 ) ) {
-                    uint8_t upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex, false );
-                    uint8_t lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1, false );
-                    uint8_t palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
+                    unsigned char upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex, 0 );
+                    unsigned char lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1, 0 );
+                    unsigned char palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
                     palIndex |= ( ( lowerByte >> ( 7 - spritePixRow ) ) & 0x1 ) << 1;
                     if ( palIndex != 0 ) {
                         if ( ( bestAttr & 0x10 ) == 0 )
@@ -274,7 +286,7 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     IO_Init( 640 + 32, 576 + 32, 160, 144 );
     IO_SetBg( 0xf0, 0xf0, 0xd0 );
 
-    enabled = true;
+    enabled = 1;
     lcdc = lcdStat = 0;
     scy = scx = wy = wx = 0;
     bgPal = objPal0 = objPal1 = 0;

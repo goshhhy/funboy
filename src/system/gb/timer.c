@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -13,20 +11,20 @@
 typedef struct regInfo_s {
     char* name;
     size_t len;
-    uint32_t* data;
+    unsigned long* data;
 } regInfo_t;
 
-static bool enabled;
-static uint8_t divReg;
-static uint8_t divSubcount;
-static uint8_t countReg;
-static uint8_t countSubcount;
-static uint8_t divisor;
-static uint8_t modulo;
-static uint8_t control;
-static bool overflowed;
+static int enabled;
+static unsigned char divReg;
+static unsigned char divSubcount;
+static unsigned char countReg;
+static unsigned char countSubcount;
+static unsigned char divisor;
+static unsigned char modulo;
+static unsigned char control;
+static int overflowed;
 
-static void DivRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+static void DivRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -37,13 +35,12 @@ static void DivRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool
         fprintf( stderr, "warning: DivRegisterWrite: address out of bounds\n" );
         return;
     }
-    printf( "write register [0x%08x]%s <- %02x (byte %u), becomes 0\n", addr, reg->name, val, addr );
-    fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u), becomes 0\n", addr, reg->name, val, addr );
+    printf( "write register [0x%08lx]%s <- %02x (byte %lu), becomes 0\n", addr, reg->name, val, addr );
     divReg = 0;
     divSubcount = 0;
 }
 
-static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -55,8 +52,7 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
         return;
     }
 
-    printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
-    fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    printf( "write register [0x%08lx]%s <- %02hx (byte %lu)\n", addr, reg->name, val, addr );
     control = val & 0x07;
 
     enabled = ( ( control & 4 ) != 0 );
@@ -65,16 +61,16 @@ static void ControlRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
 }
 
 static void Step( gbTimer_t *self ) {
-    uint8_t selectors_pre[4] = { 0, 0, 0, 0 }, selectors_post[4] = { 0, 0, 0, 0 };
+    unsigned char selectors_pre[4] = { 0, 0, 0, 0 }, selectors_post[4] = { 0, 0, 0, 0 };
     
     if ( enabled && overflowed ) {
-        if ( ( self->cpu->bus->Read8( self->cpu->bus, 0xff0f, false ) & 0x04 ) == 0 ) {
-            //printf( "timer interrupt!\n" );
-            //fprintf( stderr, "timer interrupt!\n" ); 
+        if ( ( self->cpu->bus->Read8( self->cpu->bus, 0xff0f, 0 ) & 0x04 ) == 0 ) {
+            /* printf( "timer interrupt!\n" ); */
+            /* fprintf( stderr, "timer interrupt!\n" );  */
             self->cpu->Interrupt( self->cpu, 2 );
         }
         countReg = modulo;
-        overflowed = false;
+        overflowed = 0;
     }
 
     selectors_pre[0] = ( divReg & 0x02 ) >> 1;
@@ -98,7 +94,7 @@ static void Step( gbTimer_t *self ) {
     if ( selectors_pre[control & 0x03] > selectors_post[control & 0x03] ) {
         countReg++;
         if ( countReg == 0 ) {
-            overflowed = true;
+            overflowed = 1;
         }
     }
 }
@@ -108,7 +104,7 @@ gbTimer_t *GbTimer( busDevice_t *bus, sm83_t *cpu ) {
     timer->Step = Step;
     timer->cpu = cpu;
 
-    enabled = false;
+    enabled = 0;
     divReg = 0;
     divSubcount = 0;
     countReg = 0;

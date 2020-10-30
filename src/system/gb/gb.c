@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include "../../version.h"
@@ -11,6 +9,8 @@
 #include "timer.h"
 #include "ppu.h"
 #include "input.h"
+#include "mbc.h"
+#include "serial_log.h"
 
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
@@ -64,50 +64,79 @@ void MapGbRegs( busDevice_t* gbbus ) {
 busDevice_t *LoadRom( char* path ) {
     char romName[17] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     busDevice_t* rom = GenericRom( path, 512 );
+    unsigned char mapperType;
+    size_t romSize;
+    int i;
 
-    for ( int i = 0; i < 16; i++ )
-        romName[i] = rom->Read8( rom, 0x134 + i, false );
+    for ( i = 0; i < 16; i++ )
+        romName[i] = rom->Read8( rom, 0x134 + i, 0 );
 
     if ( ( romName[15] == 0x80 ) || ( romName[15 ] == 0xC0 ) ) {
-        romName[15] == '\0';        
-    }
+        romName[15] = '\0';        
+    } 
     printf( "Loading rom %s\n", romName );
     IO_SetTitle( romName );
 
-    uint8_t mapperType = rom->Read8( rom, 0x147, false );
-    size_t romSize = ( 32 * 1024 ) << rom->Read8( rom, 0x148, false );
-    printf( "mapper type is %02x\n", rom->Read8( rom, 0x147, false ) );
-    printf( "rom size is %ikb\n", romSize / 1024 );
-    rom = GenericRom( path, romSize );
+    mapperType = rom->Read8( rom, 0x147, 0 );
+    romSize = ( 32 * 1024 ) << rom->Read8( rom, 0x148, 0 );
+    printf( "mapper type is %02x\n", rom->Read8( rom, 0x147, 0 ) );
+    printf( "rom size is %ukb\n", (int)(romSize / 1024) );
+
+    switch( mapperType ) {
+        case 0x01:
+        case 0x02:
+        case 0x03:
+            rom = MBC1Rom( path, romSize );
+            break;
+        case 0x11:
+        case 0x12:
+        case 0x13:
+            rom = MBC3Rom( path, romSize );
+            break;
+        default:
+            rom = GenericRom( path, romSize );
+    }
 
     return rom;
 }
 
 int main( int argc, char **argv ) {
     int framestep = 0;
-    bool go = true;
+    int go = 1;
+    busDevice_t *gbbus;
+    busDevice_t* ram;
+    busDevice_t* zpage;
+    busDevice_t* cram;
+    busDevice_t* bgram;
+    busDevice_t* oam;
+    busDevice_t* cartram;
+    busDevice_t* rom;
+    sm83_t *cpu;
+    gbTimer_t *timer;
+    gbPpu_t *ppu;
+
     printf( "kutaragi!gb v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
 
-    busDevice_t *gbbus = GenericBus( "gb" );
+    gbbus = GenericBus( "gb" );
 
-    busDevice_t* ram = GenericRam( 0x2000 );
-    busDevice_t* zpage = GenericRam( 0x7f );
-    busDevice_t* cram = GenericRam( 0x17ff );
-    busDevice_t* bgram = GenericRam( 0x800 );
-    busDevice_t* oam = GenericRam( 0x9f );
-    busDevice_t* cartram = GenericRam( 0x2000 );
+    ram = GenericRam( 0x2000 );
+    zpage = GenericRam( 0x80 );
+    cram = GenericRam( 0x1800 );
+    bgram = GenericRam( 0x800 );
+    oam = GenericRam( 0xa0 );
+    cartram = GenericRam( 0x2000 );
 
     MapGbRegs( gbbus );
     SerialToStderr( gbbus );
 
-    sm83_t *cpu = Sm83( gbbus );
-    gbTimer_t *timer = GbTimer( gbbus, cpu );
-    gbPpu_t *ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
+    cpu = Sm83( gbbus );
+    timer = GbTimer( gbbus, cpu );
+    ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
     GbInput( gbbus, cpu );
 
-    IO_SetEmuName( "kutaragi!gb" );
+    IO_SetEmuName( "funboy!" );
 
-    busDevice_t* rom = LoadRom( argv[1] );
+    rom = LoadRom( argv[1] );
 
     GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
     GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );
@@ -126,4 +155,5 @@ int main( int argc, char **argv ) {
         }
         go = IO_Update();
     }
+    return 0;
 }

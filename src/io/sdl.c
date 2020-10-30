@@ -1,8 +1,4 @@
-#include <stdbool.h>
-
 #include <SDL2/SDL.h>
-
-
 
 #include "io.h"
 
@@ -11,19 +7,18 @@ SDL_Surface* windowSurf = NULL;
 SDL_Surface* renderSurf = NULL;
 SDL_Surface* pixelSurf = NULL;
 
-static bool border = true;
 static int borderSize = 4;
 int renderScale = 4;
 int useScanLines = 0;
 int useDotsFilter = 1;
 
-char* emuName = "kutaragi!";
+const char* emuName = "funboy!";
 
 uint8_t bgRed = 0, bgGreen = 0, bgBlue = 0;
 
 int renderWidth, renderHeight;
 
-int* screen = NULL;
+uint8_t* screen = NULL;
 
 void (*KeyPressCallback)( int key ) = NULL;
 void (*KeyReleaseCallback)( int key ) = NULL;
@@ -90,48 +85,50 @@ void IO_DrawPixel( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {
 
 void IO_ScreenCopy( void ) {
 	int x, y, r, g, b;
-	
+
 	SDL_FillRect( renderSurf, NULL, SDL_MapRGB( renderSurf->format, bgRed, bgGreen, bgBlue ) );
-	
+
 	for( y = 0; y < renderHeight; y++ ) {
 		for ( x = 0; x < renderWidth; x++ ) {
+			SDL_Rect dim, dim2, dim3;
+
 			r = screen[(renderWidth * y * 3) + (x * 3) + 0];
 			g = screen[(renderWidth * y * 3) + (x * 3) + 1];
 			b = screen[(renderWidth * y * 3) + (x * 3) + 2];
-
-			SDL_Rect dim = { 0, 0, 0, 0 };
 			
 			dim.x = ( x + borderSize ) * renderScale;
 			dim.y = ( y + borderSize ) * renderScale;
+			dim.w = renderScale;
+			dim.h = renderScale;
 			
 			if ( useDotsFilter && ( renderScale > 2 ) ) {
 				uint8_t averaged_r = ( (uint16_t)r + (uint16_t)r + (uint16_t)bgRed ) / 3;
 				uint8_t averaged_g = ( (uint16_t)g + (uint16_t)g + (uint16_t)bgGreen ) / 3;
 				uint8_t averaged_b = ( (uint16_t)b + (uint16_t)b + (uint16_t)bgBlue ) / 3;
 
-				SDL_Rect dim2 = { 0, 0, 1 * renderScale - 1, 1 * renderScale};
 				dim2.x = ( x + borderSize ) * renderScale + (renderScale - 1);
 				dim2.y = ( y + borderSize ) * renderScale;
-				SDL_Rect dim3 = { 0, 0, 1 * renderScale, 1 * renderScale - 1 };
+				dim2.w = 1 * renderScale - 1;
+				dim2.h = 1 * renderScale;
+				
 				dim3.x = ( x + borderSize ) * renderScale;
 				dim3.y = ( y + borderSize ) * renderScale + (renderScale - 1);
-				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, r, g, b ) );
-				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim );
-				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, averaged_r, averaged_g, averaged_b ) );
-				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim2 );
-				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, averaged_r, averaged_g, averaged_b ) );
-				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim3 );
+				dim3.w = 1 * renderScale;
+				dim3.h = 1 * renderScale - 1;
+
+				SDL_FillRect( renderSurf, &dim, SDL_MapRGB( renderSurf->format, r, g, b ) );
+				SDL_FillRect( renderSurf, &dim2, SDL_MapRGB( pixelSurf->format, averaged_r, averaged_g, averaged_b ) );
+				SDL_FillRect( renderSurf, &dim3, SDL_MapRGB( pixelSurf->format, averaged_r, averaged_g, averaged_b ) );
 			} else if ( useScanLines && ( renderScale > 1 ) ) {
-				SDL_Rect dim2 = { 0, 0, 1 * renderScale, 1 * renderScale / 2 };
+				dim.h = dim.h / 2;
 				dim2.x = x * renderScale;
 				dim2.y = y * renderScale + (renderScale / 2);
-				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, r, g, b ) );
-				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim );
-				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, r * 0.85, g * 0.85, b * 0.85 ) );
-				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim2 );
+				dim2.w = 1 * renderScale;
+				dim2.h = 1 * renderScale / 2;
+				SDL_FillRect( pixelSurf, &dim, SDL_MapRGB( pixelSurf->format, r, g, b ) );
+				SDL_FillRect( pixelSurf, &dim2, SDL_MapRGB( pixelSurf->format, r * 0.85, g * 0.85, b * 0.85 ) );
 			} else {
-				SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, r, g, b ) );
-				SDL_BlitSurface( pixelSurf, NULL, renderSurf, &dim );	
+				SDL_FillRect( pixelSurf, &dim, SDL_MapRGB( pixelSurf->format, r, g, b ) );
 			}
 		}
 	}
@@ -145,12 +142,11 @@ void IO_SetKeyReleaseCallback( void (*Callback)( int key ) ) {
 	KeyReleaseCallback = Callback;	
 }
 
-bool IO_Update( void ) {
+int IO_Update( void ) {
 	SDL_Event e;
-	static int updates = 0;
-	bool r = true;
+	int r = 1;
 
-	//printf( "begin video update %i\n", updates++ );
+	/*printf( "begin video update %i\n", updates++ );*/
 	IO_ScreenCopy();
 	
 	if ( SDL_BlitScaled( renderSurf, NULL, windowSurf, NULL ) )	
@@ -160,7 +156,7 @@ bool IO_Update( void ) {
 	while ( SDL_PollEvent( &e ) != 0 ) {
 		switch( e.type ) {
 			case SDL_QUIT:
-				r = false;
+				r = 0;
 				break;
 			case SDL_WINDOWEVENT_RESIZED:
 				windowSurf = SDL_GetWindowSurface( window );

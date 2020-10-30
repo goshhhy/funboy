@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h> 
-#include <stdint.h>
-#include <stdbool.h>
 
 #include "device.h"
 
@@ -9,8 +7,8 @@
 
 typedef struct busMapping_s {
     char *name;
-    uint32_t addr_start;
-    uint32_t addr_end;
+    unsigned long addr_start;
+    unsigned long addr_end;
     busDevice_t* device;
 } busMapping_t;
 
@@ -20,23 +18,25 @@ typedef struct busInfo_s {
     char emptyVal;
 } busInfo_t;
 
-static busMapping_t* GetTargetBusMapping( busInfo_t* bus, uint32_t addr ) {
-    for ( int i = 0; i < MAX_MAPPINGS; i++ ) {
+static busMapping_t* GetTargetBusMapping( busInfo_t* bus, unsigned long addr ) {
+    int i;
+
+    for ( i = 0; i < MAX_MAPPINGS; i++ ) {
         if ( bus->mappings[i].device ) {
             if ( addr >= bus->mappings[i].addr_start ) {
                 if ( addr <= bus->mappings[i].addr_end ) {
-                    //printf( "bus %s forwarding access at %04x to device %s\n", bus->name, addr, bus->mappings[i].name );
+                    /* printf( "bus %s forwarding access at %04x to device %s\n", bus->name, addr, bus->mappings[i].name ); */
                     return &bus->mappings[i];
                 }
             }
         }
     }
-    printf( "bus %s: no device found for access (offset %08x)\n", bus->name, addr );
-    //exit( 1 );
+    printf( "bus %s: no device found for access (offset %08lx)\n", bus->name, addr );
+    /* exit( 1 ); */
     return NULL;
 }
 
-static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr, bool final ) {
+static unsigned char GenericBusRead( busDevice_t *dev, unsigned long addr, int final ) {
     busInfo_t *bus;
     busMapping_t *mapping;
 
@@ -51,7 +51,7 @@ static uint8_t GenericBusRead( busDevice_t *dev, uint32_t addr, bool final ) {
 }
 
 
-static void GenericBusWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+static void GenericBusWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     busInfo_t *bus;
     busMapping_t *mapping;
 
@@ -64,7 +64,7 @@ static void GenericBusWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
     mapping->device->Write8( mapping->device, addr - mapping->addr_start, val, final );
 }
 
-void GenericBusSetEmptyVal( busDevice_t *dev, uint8_t val ) {
+void GenericBusSetEmptyVal( busDevice_t *dev, unsigned char val ) {
     busInfo_t *bus;
 
     if ( !dev || !dev->data )
@@ -73,14 +73,14 @@ void GenericBusSetEmptyVal( busDevice_t *dev, uint8_t val ) {
     bus->emptyVal = val;
 }
 
-void GenericBusMapping( busDevice_t *dev, char* name, uint32_t addr_start, uint32_t addr_end, busDevice_t *subdev ) {
+void GenericBusMapping( busDevice_t *dev, char* name, unsigned long addr_start, unsigned long addr_end, busDevice_t *subdev ) {
     busInfo_t *bus;
-    
+    int i;
 
     if ( !dev || !dev->data || !subdev || ( addr_start > addr_end ) )
         return;
     bus = dev->data;
-    for ( int i = 0; i < MAX_MAPPINGS; i++ ) {
+    for ( i = 0; i < MAX_MAPPINGS; i++ ) {
         if ( bus->mappings[i].device == NULL ) {
             bus->mappings[i].name = name;
             bus->mappings[i].addr_start = addr_start;

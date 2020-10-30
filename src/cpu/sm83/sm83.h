@@ -1,67 +1,74 @@
+#pragma pack(1)
 
-#define lr_dreg(x, y) union{struct{uint8_t y; uint8_t x;};uint16_t x##y;};
-
-typedef struct sm83_instruction_s {
-    union {
-        struct {
-            uint8_t b0:1;
-            uint8_t b1:1;
-            uint8_t b2:1;
-            uint8_t b3:1;
-            uint8_t b4:1;
-            uint8_t b5:1;
-            uint8_t b6:1;
-            uint8_t b7:1;
-        };
-        struct {
-            uint8_t z:3;
-			uint8_t y:3;
-            uint8_t x:2;
-        };
-		struct {
-			uint8_t z2:3;
-			uint8_t q:1;
-			uint8_t p:2;
-			uint8_t x2:2;
-		};
-        uint8_t full;
-    };
+typedef union sm83_instruction_s {
+	struct {
+		unsigned int b0:1;
+		unsigned int b1:1;
+		unsigned int b2:1;
+		unsigned int b3:1;
+		unsigned int b4:1;
+		unsigned int b5:1;
+		unsigned int b6:1;
+		unsigned int b7:1;
+	} bits;
+	struct {
+		unsigned int z:3;
+		unsigned int y:3;
+		unsigned int x:2;
+	} xyz;
+	struct {
+		unsigned int z2:3;
+		unsigned int q:1;
+		unsigned int p:2;
+		unsigned int x2:2;
+	} pqxz;
+	unsigned char full;
 } sm83_instruction_t;
 
-typedef struct sm83_s{ 
+typedef struct sm83_s { 
 	union{
 		struct{
-			union{
-				struct{
-					uint8_t fl:4;
-					uint8_t fc:1;
-					uint8_t fh:1;
-					uint8_t fn:1;
-					uint8_t fz:1;
-				};
-				uint8_t f;
-			};
-			uint8_t a;
-		};
-		uint16_t af;
-	};
-	lr_dreg(b,c);
-	lr_dreg(d,e);
-	lr_dreg(h,l);
-	uint16_t sp;
-	uint16_t pc;
-	uint8_t ifl;
-	bool halted;
-	// internal state
+			unsigned int fl:4;
+			unsigned int fc:1;
+			unsigned int fh:1;
+			unsigned int fn:1;
+			unsigned int fz:1;
+		} flags;
+		unsigned char reg;
+	} f;
+	unsigned char a, b, c, d, e, h, l, ifl;
+	unsigned short sp, pc;
+	int halted;
+	/* internal state */ 
 	sm83_instruction_t op;
-	bool fetched;
+	int fetched;
 	int timetarget;
-	// external
+	/* external */
     busDevice_t* bus;
     void (*Reset)( struct sm83_s *self );
     void (*Step)( struct sm83_s *self );
-	void (*Interrupt)( struct sm83_s *cpu, uint8_t inum );
+	void (*Interrupt)( struct sm83_s *cpu, unsigned char inum );
 } sm83_t;
 
+typedef enum {
+    LD_MODE_B  = 0,
+    LD_MODE_C  = 1,
+    LD_MODE_D  = 2,
+    LD_MODE_E  = 3,
+    LD_MODE_H  = 4,
+    LD_MODE_L  = 5,
+    LD_MODE_HL = 6,
+    LD_MODE_A  = 7
+} ldMode_t;
 
 sm83_t *Sm83( busDevice_t *bus );
+unsigned char read_r( sm83_t *cpu, unsigned char r );
+void write_r( sm83_t *cpu, unsigned char val, unsigned char r );
+unsigned short read_rp( sm83_t *cpu, unsigned char r );
+void write_rp( sm83_t *cpu, unsigned short val, unsigned char r );
+unsigned short read_rp2( sm83_t *cpu, unsigned char r );
+void write_rp2( sm83_t *cpu, unsigned short val, unsigned char r );
+void pushw( sm83_t* cpu, unsigned short word );
+unsigned short popw( sm83_t* cpu );
+
+#pragma pack(0)

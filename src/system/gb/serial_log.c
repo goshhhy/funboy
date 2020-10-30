@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include "../../version.h"
@@ -10,12 +8,12 @@
 typedef struct regInfo_s {
     char* name;
     size_t len;
-    uint32_t* data;
+    unsigned long* data;
 } regInfo_t;
 
-uint8_t datReg;
+unsigned char datReg = 0;
 
-static uint8_t SerialRegisterRead( busDevice_t *dev, uint32_t addr, bool final ) {
+static unsigned char SerialRegisterRead( busDevice_t *dev, unsigned long addr, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -26,13 +24,14 @@ static uint8_t SerialRegisterRead( busDevice_t *dev, uint32_t addr, bool final )
         fprintf( stderr, "warning: SerialRegisterRead: address out of bounds\n" );
         return 0;
     }
-    printf( "read register [0x%08x]%s:%08x\n", addr, reg->name, *reg->data  );
+    /* printf( "read register [0x%08x]%s:%08x\n", addr, reg->name, *reg->data  ); */
     if ( reg->data ) {
         return reg->data[addr];
     }
+    return 0;
 }
 
-static void SerialRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+static void SerialRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -44,7 +43,7 @@ static void SerialRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, b
         return;
     }
 
-    //printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+    /* printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr ); */
     if ( reg->data ) {
         reg->data[addr] = val;
     }
@@ -53,7 +52,7 @@ static void SerialRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, b
     }
 }
 
-void *SerialToStderr( busDevice_t* bus ) {
+void SerialToStderr( busDevice_t* bus ) {
     GenericBusMapping( bus, "SerDat", 0xFF01, 0xFF01, GenericRegister( "SerDat", &datReg, 1, NULL, NULL ) );
     GenericBusMapping( bus, "SerTxCtl", 0xFF02, 0xFF02, GenericRegister( "SerTxCtl", NULL, 1, SerialRegisterRead, SerialRegisterWrite ) );
 }

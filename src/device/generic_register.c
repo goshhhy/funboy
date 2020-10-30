@@ -1,19 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h> 
-#include <stdint.h>
-#include <stdbool.h>
 
 #include "device.h"
 
-bool printSteps = false;
+int printSteps = 0;
 
 typedef struct regInfo_s {
     char* name;
     size_t len;
-    uint8_t* data;
+    unsigned char* data;
 } regInfo_t;
 
-static uint8_t GenericRegisterRead( busDevice_t *dev, uint32_t addr, bool final ) {
+static unsigned char GenericRegisterRead( busDevice_t *dev, unsigned long addr, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -25,7 +23,7 @@ static uint8_t GenericRegisterRead( busDevice_t *dev, uint32_t addr, bool final 
         return 0;
     }
     if ( printSteps )
-        printf( "read register [0x%08x]%s:%08x\n", addr, reg->name, *reg->data  );
+        printf( "read register [0x%08lx]%s:%08x\n", addr, reg->name, *reg->data  );
     if ( reg->data ) {
         return reg->data[addr];
     }
@@ -33,7 +31,7 @@ static uint8_t GenericRegisterRead( busDevice_t *dev, uint32_t addr, bool final 
 }
 
 
-static void GenericRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+static void GenericRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -46,13 +44,13 @@ static void GenericRegisterWrite( busDevice_t *dev, uint32_t addr, uint8_t val, 
     }
 
     if ( printSteps )
-        fprintf( stdout, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr );
+        fprintf( stdout, "write register [0x%08lx]%s <- %02x (byte %lu)\n", addr, reg->name, val, addr );
     if ( reg->data ) {
         reg->data[addr] = val;
     }
 }
 
-uint8_t *GenericRegisterdataPtr( busDevice_t *dev ) {
+unsigned char *GenericRegisterdataPtr( busDevice_t *dev ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -62,8 +60,8 @@ uint8_t *GenericRegisterdataPtr( busDevice_t *dev ) {
     return reg->data;
 }
 
-busDevice_t *GenericRegister( char *name, uint8_t *data, size_t len, uint8_t (*Read8)( struct busDevice_s* self, uint32_t addr, bool final ),
-                                    void (*Write8)( struct busDevice_s* self, uint32_t addr, uint8_t val, bool final ) ) {
+busDevice_t *GenericRegister( char *name, unsigned char *data, size_t len, unsigned char (*Read8)( struct busDevice_s* self, unsigned long addr, int final ),
+                                    void (*Write8)( struct busDevice_s* self, unsigned long addr, unsigned char val, int final ) ) {
     busDevice_t *dev;
     regInfo_t *reg;
 
@@ -72,7 +70,7 @@ busDevice_t *GenericRegister( char *name, uint8_t *data, size_t len, uint8_t (*R
         return NULL;
     }
     if ( !data ) {
-        data = malloc( sizeof( uint8_t ) * len );
+        data = calloc( sizeof( unsigned char ) * len, 1 );
     }
     reg->name = name;
     reg->len = len;

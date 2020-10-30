@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h> 
-#include <stdint.h>
-#include <stdbool.h>
 
 #include "device.h"
 
@@ -11,7 +9,7 @@ typedef struct romInfo_s {
     char* bytes;
 } romInfo_t;
 
-static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr, bool final ) {
+static unsigned char GenericRomRead( busDevice_t *dev, unsigned long addr, int final ) {
     romInfo_t *rom;
 
     if ( !dev || !dev->data )
@@ -19,14 +17,14 @@ static uint8_t GenericRomRead( busDevice_t *dev, uint32_t addr, bool final ) {
     rom = dev->data;
 
     if ( addr > rom->len ) {
-        fprintf( stderr, "warning: GenericRomRead: address out of bounds [%s:%04x]\n", rom->name, addr );
+        fprintf( stderr, "warning: GenericRomRead: address out of bounds [%s:%04lx]\n", rom->name, addr );
         return 0;
     }
     return rom->bytes[addr];
 }
 
 
-static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool final ) {
+static void GenericRomWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     romInfo_t *rom;
 
     if ( !dev || !dev->data )
@@ -38,8 +36,8 @@ static void GenericRomWrite( busDevice_t *dev, uint32_t addr, uint8_t val, bool 
         exit(1);
         return;
     }
-    fprintf( stderr, "warning: discarded write to rom area [0x%04x]\n", addr );
-    //exit(1);
+    fprintf( stderr, "warning: discarded write to rom area [0x%04lx]\n", addr );
+    /* exit(1); */
 }
 
 char* GenericRomBytesPtr( busDevice_t *dev ) {
@@ -56,6 +54,7 @@ busDevice_t *GenericRom( char *fileName, size_t len ) {
     FILE *f = fopen( fileName, "r" );
     busDevice_t *dev;
     romInfo_t *rom;
+    size_t rem;
 
     if ( !f ) {
         fprintf( stderr, "couldn't open rom %s\n", fileName );
@@ -72,7 +71,7 @@ busDevice_t *GenericRom( char *fileName, size_t len ) {
     dev->data = rom;
     dev->Read8 = GenericRomRead;
     dev->Write8 = GenericRomWrite;
-    for ( size_t rem = len; rem > 0; ) {
+    for ( rem = len; rem > 0; ) {
         size_t read = fread( rom->bytes, 1, rem, f );
         rem = rem - read;
         if ( read == 0 ) {

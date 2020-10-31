@@ -116,7 +116,7 @@ unsigned short read_rp2( sm83_t *cpu, unsigned char r ) {
         case 2:
             return (cpu->h << 8) + cpu->l;
         case 3:
-            return (cpu->a << 8) + cpu->f.reg;
+            return (cpu->a << 8) + cpu->f;
         default:
             printf("warning: sm83: invalid double register reference\n");
             return 0;
@@ -139,7 +139,7 @@ void write_rp2( sm83_t *cpu, unsigned short val, unsigned char r ) {
             break;
         case 3:
             cpu->a = (val >> 8);
-            cpu->f.reg = (val & 0xf0);
+            cpu->f = (val & 0xf0);
             break;
         default:
             printf("warning: sm83: invalid double register reference\n");
@@ -154,7 +154,7 @@ void pushw( sm83_t* cpu, unsigned short word ) {
 
 unsigned short popw( sm83_t* cpu ) {
     cpu->sp += 2;
-    return ( read8( cpu, cpu->sp - 1, 0) << 8 ) + read8( cpu, cpu->sp - 2, 1 );
+    return ( read8( cpu, cpu->sp - 1, 0) << 8 ) | read8( cpu, cpu->sp - 2, 1 );
 }
 
 /* op tables */
@@ -168,8 +168,8 @@ void (*cbops[32])( sm83_t* cpu ) = {
 
 static void op_cb( sm83_t *cpu ) {
     cpu->pc++;
-    cpu->op.full = read8( cpu, cpu->pc, 1 );
-    cbops[( cpu->op.full & 0xF8 ) >> 3]( cpu );
+    cpu->op = read8( cpu, cpu->pc, 1 );
+    cbops[( cpu->op & 0xF8 ) >> 3]( cpu );
 }
 
 void (*ops[256])( sm83_t* cpu ) = {
@@ -217,8 +217,8 @@ static void Step( sm83_t *cpu ) {
     unsigned char active;
 
     if ( cpu->fetched == 0 ) {
-        cpu->op.full = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
-        cpu->timetarget += timings[cpu->op.full];
+        cpu->op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
+        cpu->timetarget += timings[cpu->op];
         cpu->fetched = 1;
     }
 
@@ -228,10 +228,10 @@ static void Step( sm83_t *cpu ) {
 
     if ( ! cpu->halted ) {
     	/*printf("[%04lx] %02lx b:%02lx c:%02lx d:%02lx e:%02lx h:%02lx l:%02lx a:%02lx f:%02lx\n", 
-    				cpu->pc, cpu->op.full,
+    				cpu->pc, cpu->op,
     				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f.reg );
         */
-        ops[cpu->op.full]( cpu );
+        ops[cpu->op]( cpu );
         cpu->pc++;
     }
 
@@ -239,7 +239,7 @@ static void Step( sm83_t *cpu ) {
     if ( ( cpu->ifl == 1 ) || ( cpu->halted ) ) {
         active = ( read8( cpu, 0xffff, 0 ) & read8( cpu, 0xff0f, 0 ) ) & 0x1F; 
         if ( active ) {
-            printf("running interrupt\n");
+            /*printf("running interrupt\n");*/
             pushw( cpu, cpu->pc );
             cpu->halted = 0;
             cpu->ifl = 0;
@@ -266,13 +266,13 @@ static void Step( sm83_t *cpu ) {
 }
 
 static void Interrupt( sm83_t *cpu, unsigned char inum ) {
-        fprintf( stderr, "interrupt %hhi set with interrupts %i, ie %hhi\n", inum, cpu->ifl, read8( cpu, 0xffff, 0 ) );
+        /*fprintf( stderr, "interrupt %hhi set with interrupts %i, ie %hhi\n", inum, cpu->ifl, read8( cpu, 0xffff, 0 ) );*/
         write8( cpu, 0xff0f, read8( cpu, 0xff0f, 0 ) | (0x1 << inum), 0 );
         cpu->halted = 0;
 }
 
 static void Reset( sm83_t *cpu ) {
-    cpu->a = 0x01; cpu->f.reg = 0xb0;
+    cpu->a = 0x01; cpu->f = 0xb0;
     cpu->b = 0x00; cpu->c = 0x13;
     cpu->d = 0x00; cpu->e = 0xd8;
     cpu->h = 0x01; cpu->l = 0x4d;

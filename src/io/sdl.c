@@ -175,3 +175,7 @@ int IO_Update( void ) {
 	}
 	return r;
 }
+
+int main( int argc, char **argv ) {
+	gb_main(argv[1]);
+}

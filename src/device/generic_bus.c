@@ -25,14 +25,12 @@ static busMapping_t* GetTargetBusMapping( busInfo_t* bus, unsigned long addr ) {
         if ( bus->mappings[i].device ) {
             if ( addr >= bus->mappings[i].addr_start ) {
                 if ( addr <= bus->mappings[i].addr_end ) {
-                    /* printf( "bus %s forwarding access at %04x to device %s\n", bus->name, addr, bus->mappings[i].name ); */
                     return &bus->mappings[i];
                 }
             }
         }
     }
     printf( "bus %s: no device found for access (offset %08lx)\n", bus->name, addr );
-    /* exit( 1 ); */
     return NULL;
 }
 

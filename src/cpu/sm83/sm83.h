@@ -62,6 +62,9 @@ typedef enum {
 } ldMode_t;
 
 sm83_t *Sm83( busDevice_t *bus );
+
+void Step_Cached( sm83_t *cpu );
+
 unsigned char read_r( sm83_t *cpu, unsigned char r );
 void write_r( sm83_t *cpu, unsigned char val, unsigned char r );
 unsigned short read_rp( sm83_t *cpu, unsigned char r );

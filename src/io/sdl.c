@@ -77,7 +77,7 @@ void IO_SetTitle( const char* title ) {
 	SDL_SetWindowTitle( window, final );
 }
 
-void IO_DrawPixel( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {
+void IO_DrawPixel24( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {
 	screen[(renderWidth * y * 3) + (x * 3) + 0] = r;
 	screen[(renderWidth * y * 3) + (x * 3) + 1] = g;
 	screen[(renderWidth * y * 3) + (x * 3) + 2] = b;

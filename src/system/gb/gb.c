@@ -115,7 +115,7 @@ int main( int argc, char **argv ) {
     gbTimer_t *timer;
     gbPpu_t *ppu;
 
-    printf( "kutaragi!gb v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
+    printf( "funboy!gb v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
 
     gbbus = GenericBus( "gb" );
 

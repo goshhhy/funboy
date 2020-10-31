@@ -67,7 +67,7 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
         }
         for ( y = 0; y < 144; y++ ) {
             for ( x = 0; x < 160; x++ ) {
-                IO_DrawPixel( x, y, colors[0][0], colors[0][1], colors[0][2] );
+                IO_DrawPixel24( x, y, colors[0][0], colors[0][1], colors[0][2] );
             }
         }
         ly = 0;
@@ -178,7 +178,9 @@ static void Step( gbPpu_t *self ) {
             unsigned char bestX = 168, bestY = 160, bestSprite = 255, bestAttr = 0x00;
             int spriteNum;
 
-            memset( bestSprites, 255, 40 );
+            for ( i = 0; i < 40; i++ ) {
+                bestSprites[i] = 255;
+            }
             for ( spriteNum = 39; spriteNum >= 0; spriteNum-- ) {
                 unsigned char spriteY, spriteX = self->oam->Read8( self->oam, ( spriteNum * 4 ) + 1, 0 );
                 unsigned char spriteAttr = self->bgRam->Read8( self->oam, ( spriteNum* 4 ) + 3, 0 );
@@ -238,7 +240,7 @@ static void Step( gbPpu_t *self ) {
         }
 
         if ( enabled )
-            IO_DrawPixel( dotClock, ly, colors[shade][0], colors[shade][1], colors[shade][2] );
+            IO_DrawPixel24( dotClock, ly, colors[shade][0], colors[shade][1], colors[shade][2] );
         lcdStat |= 0x03;
     } else if ( ly < 144 ) {
         if ( dotClock == 160 ) {

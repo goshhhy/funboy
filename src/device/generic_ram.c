@@ -13,6 +13,10 @@ typedef struct ramInfo_s {
 static unsigned char GenericRamRead( busDevice_t *dev, unsigned long addr, int final ) {
     ramInfo_t *ram = dev->data;
 
+    if ( addr >= ram->len ) {
+        printf("warning: GenericRamRead: address out of bounds (access to %04lx in a block of size %04lx)\n", addr, ram->len );
+    }
+
     if ( ram->disabled )
         return ram->disabled_value;
     else

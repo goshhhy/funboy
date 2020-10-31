@@ -8,7 +8,7 @@
 
 #define write8( cpu, addr, val, final ) cpu->bus->Write8( cpu->bus, addr, val, final )
 #define read8( cpu, addr, final ) cpu->bus->Read8( cpu->bus, addr, final )
-#define read16( cpu, addr, final ) ( ( cpu->bus->Read8( cpu->bus, addr + 1, 0 ) << 8 ) + cpu->bus->Read8( cpu->bus, addr, final ) )
+#define read16( cpu, addr, final ) ( ( cpu->bus->Read8( cpu->bus, addr + 1, 0 ) << 8 ) | cpu->bus->Read8( cpu->bus, addr, final ) )
 
 extern int printSteps;
 
@@ -227,6 +227,10 @@ static void Step( sm83_t *cpu ) {
         return;
 
     if ( ! cpu->halted ) {
+        printf( "[%04lx] %02hhx b:%02hhx c:%02hhx d:%02hhx e:%02hhx h:%02hhx l:%02hhx a:%02hhx f:%02hhx", 
+                    cpu->pc, cpu->op.full,
+                    cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f.reg );
+        getchar();
         ops[cpu->op.full]( cpu );
         cpu->pc++;
     }

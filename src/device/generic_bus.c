@@ -22,11 +22,9 @@ static busMapping_t* GetTargetBusMapping( busInfo_t* bus, unsigned long addr ) {
     int i;
 
     for ( i = 0; i < MAX_MAPPINGS; i++ ) {
-        if ( bus->mappings[i].device ) {
-            if ( addr >= bus->mappings[i].addr_start ) {
-                if ( addr <= bus->mappings[i].addr_end ) {
-                    return &bus->mappings[i];
-                }
+        if ( addr >= bus->mappings[i].addr_start ) {
+            if ( addr <= bus->mappings[i].addr_end ) {
+                return &bus->mappings[i];
             }
         }
     }

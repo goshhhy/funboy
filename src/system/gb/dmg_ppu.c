@@ -1,3 +1,6 @@
+/* possibly the slowest and worst code in the entire project.
+    need to find a better approach here, i think. */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -8,7 +11,11 @@
 #include "io.h"
 #include "ppu.h"
 
-/*  register values */
+/*  register values 
+TODO: move these into GbPpu_t so we can have multiple instances
+(e.g. on classic mac, multiple gameboys running)
+*/
+
 static unsigned char lcdc;
 static unsigned char lcdStat;
 static unsigned char scx, scy, wx, wy;
@@ -22,8 +29,8 @@ static int enabled;
 
 unsigned char colors[4][3] = {
 	{ 0xe7, 0xe7, 0xc7 },
-	{ 0xc3, 0xc3, 0xa3 },
-	{ 0x9b, 0x9b, 0x8b },
+	{ 0xc3, 0xc3, 0x9f },
+	{ 0x9b, 0x9b, 0x87 },
 	{ 0x38, 0x38, 0x28 },
 };
 
@@ -75,7 +82,7 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
     }
 }
 
-unsigned char RenderBackground( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, unsigned short bgRow,
+void RenderBackground( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, unsigned short bgRow,
 						unsigned short tileDataBase, unsigned short bgMapBase, unsigned short winMapBase ) {
 	
         if ( ( lcdc & 0x01 ) != 0 ) {
@@ -89,7 +96,7 @@ unsigned char RenderBackground( gbPpu_t *self, unsigned char *shade, unsigned sh
             tileLine = bgLine / 8;
             tileRow = bgRow / 8;
             tileOffset = ( (unsigned short)tileLine * (unsigned short)32 ) + (unsigned short)tileRow;
-            tileNum = self->bgRam->Read8( self->bgRam, bgMapBase + tileOffset, 0 ); 
+            tileNum = self->bgRamBytes[ bgMapBase + tileOffset ]; 
 
             if ( ( lcdc & 0x10 ) == 0 ) {
                 char tileFix = (char)tileNum;
@@ -101,15 +108,15 @@ unsigned char RenderBackground( gbPpu_t *self, unsigned char *shade, unsigned sh
             pixRow = bgRow % 8;
             tileByteIndex = pixLine * 2;
 
-            upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, 0 );
-            lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, 0 );
+            upperByte = self->cRamBytes[tileDataBase + ( tileNum * 16 ) + tileByteIndex ];
+            lowerByte = self->cRamBytes[tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1 ];
             palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
             palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
             *shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
         }
 }
 
-unsigned char RenderWindow( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, unsigned short bgRow,
+void RenderWindow( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, unsigned short bgRow,
 						unsigned short tileDataBase, unsigned short bgMapBase, unsigned short winMapBase ) {
 	
         if ( ( ( lcdc & 0x20 ) != 0 ) && ( wx >= 0 ) && ( wy >= 0 ) && ( wx < 167 ) & ( wy < 144 ) &&
@@ -122,7 +129,7 @@ unsigned char RenderWindow( gbPpu_t *self, unsigned char *shade, unsigned short 
             tileLine = bgLine / 8;
             tileRow = bgRow / 8;
             tileOffset = ( (unsigned short)tileLine * (unsigned short)32 ) + (unsigned short)tileRow;
-            tileNum = self->bgRam->Read8( self->bgRam, winMapBase + tileOffset, 0 ); 
+            tileNum = self->bgRamBytes[ winMapBase + tileOffset ];
 
             if ( ( lcdc & 0x10 ) == 0 ) {
                 char tileFix = (char)tileNum;
@@ -134,8 +141,8 @@ unsigned char RenderWindow( gbPpu_t *self, unsigned char *shade, unsigned short 
             pixRow = bgRow % 8;
             tileByteIndex = pixLine * 2;
 
-            upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex, 0 );
-            lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1, 0 );
+            upperByte = self->cRamBytes[ tileDataBase + ( tileNum * 16 ) + tileByteIndex ];
+            lowerByte = self->cRamBytes[ tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1 ];
             palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
             palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
             *shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
@@ -160,11 +167,11 @@ void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, 
             }
             
             for ( spriteNum = 39; spriteNum >= 0; spriteNum-- ) {
-                unsigned char spriteY, spriteX = self->oam->Read8( self->oam, ( spriteNum * 4 ) + 1, 0 );
-                unsigned char spriteAttr = self->bgRam->Read8( self->oam, ( spriteNum* 4 ) + 3, 0 );
+                unsigned char spriteY, spriteX = self->oamBytes[( spriteNum * 4 ) + 1];
+                unsigned char spriteAttr = self->oamBytes[ ( spriteNum * 4 ) + 3];
                 if ( ! ( ( spriteX > 0 ) && ( spriteX < 168 ) && ( dotClock < spriteX ) && ( dotClock >= ( spriteX - 8 ) ) ) )
                     continue;
-                spriteY = self->oam->Read8( self->oam, ( spriteNum * 4 ), 0 );
+                spriteY = self->oamBytes[spriteNum * 4];
                 if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( ly < spriteY  ) && ( ly >= ( spriteY - 16 ) ) ) )
                     continue;
                 if ( spriteX > bestX )
@@ -185,10 +192,10 @@ void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, 
                 bestSprite = bestSprites[i];
                 if ( bestSprite == 255 )
                     break;
-                bestX = self->oam->Read8( self->oam, ( bestSprite * 4 ) + 1, 0 );
-                bestY = self->oam->Read8( self->oam, ( bestSprite * 4 ), 0 );
-                bestAttr = self->bgRam->Read8( self->oam, ( bestSprite* 4 ) + 3, 0 );
-                spriteTile = self->bgRam->Read8( self->oam, ( bestSprite * 4 ) + 2, 0 );
+                bestX = self->oamBytes[ ( bestSprite * 4 ) + 1 ];
+                bestY = self->oamBytes[ bestSprite * 4 ];
+                bestAttr = self->oamBytes[( bestSprite* 4 ) + 3];
+                spriteTile = self->oamBytes[( bestSprite * 4 ) + 2];
                 spritePixRow = bestX - dotClock - 1;
                 spritePixLine = bestY - ly - 1;
                 if ( ( bestAttr & 0x20 ) == 0 )
@@ -202,8 +209,8 @@ void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, 
                 }
                 tileByteIndex = spritePixLine * 2;
                 if ( ( ( lcdc & 0x04 ) != 0 ) || ( spritePixLine < 8 ) ) {
-                    unsigned char upperByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex, 0 );
-                    unsigned char lowerByte = self->cRam->Read8( self->cRam, tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1, 0 );
+                    unsigned char upperByte = self->cRamBytes[ tileDataBase + ( spriteTile * 16 ) + tileByteIndex ];
+                    unsigned char lowerByte = self->cRamBytes[ tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1 ];
                     unsigned char palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
                     palIndex |= ( ( lowerByte >> ( 7 - spritePixRow ) ) & 0x1 ) << 1;
                     if ( palIndex != 0 ) {
@@ -221,7 +228,6 @@ void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, 
 static void Step( gbPpu_t *self ) {
     unsigned char shade = 0;
     unsigned short tileDataBase = 0x0000, bgMapBase= 0x0000, winMapBase = 0x0000;
-    int i;
 
     lcdStat = lcdStat & 0xfc;
 
@@ -232,7 +238,7 @@ static void Step( gbPpu_t *self ) {
 
     if ( dmaTransferActive ) {
         unsigned char val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, 0 );
-        self->oam->Write8( self->oam, dmaAddress & 0x00ff, val, 0 );
+        self->oamBytes[dmaAddress & 0x00ff] = val;
         dmaAddress++;
         if ( ( dmaAddress & 0x00ff ) > 0x9f ) {
             dmaTransferActive = 0;
@@ -309,6 +315,14 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     ppu->bgRam = bgRam;
     ppu->cRam = cRam;
     ppu->oam = oam;
+
+    /* the bus abstraction is useful from the cpu perspective, but here we know exactly what we're accessing
+    so it just slows us down. bypassing it here provides a massive speedup. without this, RenderSprites ends
+    up taking upwards of 40% of the total execution time of the emulator */
+    ppu->bgRamBytes = bgRam->DataPtr(bgRam);
+    ppu->cRamBytes = cRam->DataPtr(cRam);
+    ppu->oamBytes = oam->DataPtr(oam);
+
     IO_Init( 640 + 32, 576 + 32, 160, 144 );
     IO_SetBg( 0xf0, 0xf0, 0xd0 );
 

@@ -106,19 +106,16 @@ void IO_ScreenCopy( void ) {
 				uint8_t averaged_g = ( (uint16_t)g + (uint16_t)g + (uint16_t)bgGreen ) / 3;
 				uint8_t averaged_b = ( (uint16_t)b + (uint16_t)b + (uint16_t)bgBlue ) / 3;
 
-				dim2.x = ( x + borderSize ) * renderScale + (renderScale - 1);
-				dim2.y = ( y + borderSize ) * renderScale;
-				dim2.w = 1 * renderScale - 1;
-				dim2.h = 1 * renderScale;
-				
-				dim3.x = ( x + borderSize ) * renderScale;
-				dim3.y = ( y + borderSize ) * renderScale + (renderScale - 1);
-				dim3.w = 1 * renderScale;
-				dim3.h = 1 * renderScale - 1;
+				dim.w -= 1;
+				dim.h -= 1;
 
-				SDL_FillRect( renderSurf, &dim, SDL_MapRGB( renderSurf->format, r, g, b ) );
+				dim2.x = dim.x;
+				dim2.y = dim.y;
+				dim2.w = dim.w + 1;
+				dim2.h = dim.h + 1;
+				
 				SDL_FillRect( renderSurf, &dim2, SDL_MapRGB( pixelSurf->format, averaged_r, averaged_g, averaged_b ) );
-				SDL_FillRect( renderSurf, &dim3, SDL_MapRGB( pixelSurf->format, averaged_r, averaged_g, averaged_b ) );
+				SDL_FillRect( renderSurf, &dim, SDL_MapRGB( renderSurf->format, r, g, b ) );
 			} else if ( useScanLines && ( renderScale > 1 ) ) {
 				dim.h = dim.h / 2;
 				dim2.x = x * renderScale;

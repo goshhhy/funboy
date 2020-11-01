@@ -3,6 +3,7 @@ typedef struct busDevice_s {
     void* data;
     unsigned char (*Read8)( struct busDevice_s* self, unsigned long addr, int final );
     void (*Write8)( struct busDevice_s* self, unsigned long addr, unsigned char val, int final );
+    void * (*DataPtr)( struct busDevice_s* self );
 } busDevice_t;
 
 /* generic devices for all platforms */

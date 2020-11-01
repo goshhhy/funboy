@@ -4,6 +4,11 @@ typedef struct gbPpu_s {
     busDevice_t *bgRam;
     busDevice_t *cRam;
     busDevice_t *oam;
+    /* raw access */
+    unsigned char *bgRamBytes;
+    unsigned char *cRamBytes;
+    unsigned char *oamBytes;
+
     void (*Step)( struct gbPpu_s *self );
 } gbPpu_t;
 

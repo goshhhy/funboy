@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h> 
 
-#include "../../device/device.h"
+#include "device.h"
 
 typedef struct romInfo_s {
     char* name;

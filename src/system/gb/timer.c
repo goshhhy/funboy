@@ -2,9 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../../version.h"
-#include "../../device/device.h"
-#include "../../cpu/sm83/sm83.h"
+#include "version.h"
+#include "device.h"
+#include "sm83.h"
 #include "timer.h"
 
 

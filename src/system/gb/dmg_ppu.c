@@ -154,6 +154,7 @@ void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, 
 						unsigned short tileDataBase, unsigned short bgMapBase, unsigned short winMapBase ) {
 						
 	int i;
+    unsigned char *oamBytes;
 	
 	if ( ! dmaTransferActive ) {
             unsigned char numSprites = 0;
@@ -166,16 +167,20 @@ void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, 
             	bestSprites[i] = 255;
             }
             
+            oamBytes = self->oamBytes;
             for ( spriteNum = 39; spriteNum >= 0; spriteNum-- ) {
-                unsigned char spriteY, spriteX = self->oamBytes[( spriteNum * 4 ) + 1];
-                unsigned char spriteAttr = self->oamBytes[ ( spriteNum * 4 ) + 3];
+                unsigned char spriteY, spriteX = oamBytes[( spriteNum * 4 ) + 1];
+                unsigned char spriteAttr;
                 if ( ! ( ( spriteX > 0 ) && ( spriteX < 168 ) && ( dotClock < spriteX ) && ( dotClock >= ( spriteX - 8 ) ) ) )
                     continue;
-                spriteY = self->oamBytes[spriteNum * 4];
+                spriteY = oamBytes[spriteNum * 4];
                 if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( ly < spriteY  ) && ( ly >= ( spriteY - 16 ) ) ) )
                     continue;
                 if ( spriteX > bestX )
                     continue;
+
+                spriteAttr = oamBytes[ ( spriteNum * 4 ) + 3];
+
                 bestX = spriteX;
                 bestY = spriteY;
                 bestSprite = spriteNum;
@@ -192,10 +197,10 @@ void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, 
                 bestSprite = bestSprites[i];
                 if ( bestSprite == 255 )
                     break;
-                bestX = self->oamBytes[ ( bestSprite * 4 ) + 1 ];
-                bestY = self->oamBytes[ bestSprite * 4 ];
-                bestAttr = self->oamBytes[( bestSprite* 4 ) + 3];
-                spriteTile = self->oamBytes[( bestSprite * 4 ) + 2];
+                bestX = oamBytes[ ( bestSprite * 4 ) + 1 ];
+                bestY = oamBytes[ bestSprite * 4 ];
+                bestAttr = oamBytes[( bestSprite* 4 ) + 3];
+                spriteTile = oamBytes[( bestSprite * 4 ) + 2];
                 spritePixRow = bestX - dotClock - 1;
                 spritePixLine = bestY - ly - 1;
                 if ( ( bestAttr & 0x20 ) == 0 )

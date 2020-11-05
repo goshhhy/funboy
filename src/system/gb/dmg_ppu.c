@@ -1,5 +1,4 @@
-/* possibly the slowest and worst code in the entire project.
-    need to find a better approach here, i think. */
+/* rewritten, scanline-based ppu emulation */
 
 #include <stdio.h>
 #include <string.h>
@@ -24,10 +23,11 @@ static unsigned char bgPal, objPal0, objPal1;
 static short dotClock, dotDelay, dotDelayTotal;
 static int dmaTransferActive = 0;
 static unsigned short dmaAddress;
+static unsigned char windowLines;
  
 static int enabled;
 
-unsigned char colors[4][3] = {
+static unsigned char colors[4][3] = {
 	{ 0xe7, 0xe7, 0xc7 },
 	{ 0xc3, 0xc3, 0x9f },
 	{ 0x9b, 0x9b, 0x87 },
@@ -49,25 +49,24 @@ static void DmaRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned cha
 static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
     regInfo_t *reg;
     int x, y;
+    int set_enabled;
 
     if ( !dev || !dev->data )
         return;
     reg = dev->data;
 
     if ( addr > reg->len ) {
-        fprintf( stderr, "warning: DivRegisterWrite: address out of bounds\n" );
+        fprintf( stderr, "warning: ControlRegisterWrite: address out of bounds\n" );
         return;
     }
 
-    /* printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr ); */
-    /* fprintf( stderr, "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr ); */
     lcdc = val;
 
-    enabled = ( ( lcdc & 0x80 ) != 0 );
-    if ( enabled ) {
+    set_enabled = ( ( lcdc & 0x80 ) != 0 );
+    if ( set_enabled ) {
         ;; /* fprintf( stderr, "lcd enabled\n" ); */
     } else {
-        if ( ly < 144 ) {
+        if ( enabled && ly < 144 ) {
             fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
         } else {
             ;; /* fprintf( stderr, "lcd disabled\n" ); */
@@ -80,28 +79,39 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
         ly = 0;
         dotClock = dotDelay = dotDelayTotal = 0;
     }
+    enabled = set_enabled;
 }
 
-void RenderBackground( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, unsigned short bgRow,
-						unsigned short tileDataBase, unsigned short bgMapBase, unsigned short winMapBase ) {
-	
-        if ( ( lcdc & 0x01 ) != 0 ) {
-            unsigned char tileLine, tileRow, tileNum, pixLine, pixRow, upperByte, lowerByte, palIndex;
-            unsigned short tileOffset, tileByteIndex;
-            if ( ( lcdc & 0x08 ) != 0 ) {
-                bgMapBase = 0x400;
-            }
-            bgLine = scy + ly;
-            bgRow = scx + dotClock;
-            tileLine = bgLine / 8;
-            tileRow = bgRow / 8;
-            tileOffset = ( (unsigned short)tileLine * (unsigned short)32 ) + (unsigned short)tileRow;
-            tileNum = self->bgRamBytes[ bgMapBase + tileOffset ]; 
+static void RenderBackground( gbPpu_t *self, unsigned char *bgPrio, unsigned char *shade, unsigned short tileDataBase  ) {
 
-            if ( ( lcdc & 0x10 ) == 0 ) {
-                char tileFix = (char)tileNum;
-                tileFix = tileFix + 128;
-                tileNum = tileFix;
+    unsigned short bgMapBase = 0;
+    unsigned char tileLine, tileRow, pixLine, pixRow, upperByte, lowerByte, palIndex;
+    unsigned char bgLine, bgRow;
+    short tileNum;
+    unsigned short tileOffset, tileByteIndex, limit = 160;
+    int i, j;
+
+    if ( ( ( lcdc & LCDC_BITS_WINDOW_ENABLE ) != 0 ) && ( wy < ly ) && ( wx < 160 ) ) {
+        limit = wx;
+    }
+
+    if ( ( lcdc & LCDC_BITS_BG_ENABLE ) != 0 ) {
+        if ( ( lcdc & LCDC_BITS_BG_MAP_SELECT ) != 0 ) {
+            bgMapBase = 0x400;
+        }
+
+        bgLine = scy + ly;
+        tileLine = bgLine / 8;
+        bgRow = scx;
+
+        for ( i = 0; i < limit; ) {
+            tileRow = bgRow / 8; 
+            tileOffset = ( tileLine * 32 ) + tileRow;
+
+            if ( ( lcdc & LCDC_BITS_BG_WINDOW_DATA_SELECT ) == 0 ) {
+                tileNum = (char)(self->bgRamBytes[ bgMapBase + tileOffset ]) + 128;
+            } else {
+                tileNum = (unsigned char)(self->bgRamBytes[ bgMapBase + tileOffset ]);
             }
 
             pixLine = bgLine % 8;
@@ -110,130 +120,215 @@ void RenderBackground( gbPpu_t *self, unsigned char *shade, unsigned short bgLin
 
             upperByte = self->cRamBytes[tileDataBase + ( tileNum * 16 ) + tileByteIndex ];
             lowerByte = self->cRamBytes[tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1 ];
-            palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
-            palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
-            *shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
+            for ( j = pixRow; (j < 8) && (i < limit); j++ ) {
+                palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+                palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
+                shade[i] = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
+                bgPrio[i] = palIndex;
+                bgRow++;
+                pixRow++;
+                i++;
+            }
         }
+    }
 }
 
-void RenderWindow( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, unsigned short bgRow,
-						unsigned short tileDataBase, unsigned short bgMapBase, unsigned short winMapBase ) {
-	
-        if ( ( ( lcdc & 0x20 ) != 0 ) && ( wx >= 0 ) && ( wy >= 0 ) && ( wx < 167 ) & ( wy < 144 ) &&
-                            ( bgLine >= 0 ) && ( bgLine < 144 ) && ( bgRow >= 0 ) && ( bgRow < 161 ) ) {
-            unsigned char tileLine, tileRow, tileNum, pixLine, pixRow, upperByte, lowerByte, palIndex;
-            unsigned short tileOffset, tileByteIndex;
-            if ( ( lcdc & 0x40 ) != 0 ) {
-                winMapBase = 0x400;
-            }
-            tileLine = bgLine / 8;
-            tileRow = bgRow / 8;
+static void RenderWindow( gbPpu_t *self, unsigned char *bgPrio, unsigned char *shade, unsigned short tileDataBase  ) {
+	unsigned short winMapBase;
+    unsigned char tileLine, tileRow, tileNum, pixLine, pixRow, upperByte, lowerByte, palIndex;
+    unsigned short tileOffset, tileByteIndex;
+    int i, j;
+
+    if ( ( ( lcdc & 0x20 ) != 0 ) && ( wx >= 0 ) && ( wy >= 0 ) && ( wx < 167 ) & ( wy < 144 ) &&
+                        ( ly >= 0 ) && ( ly < 144 ) ) {
+        if ( ( lcdc & 0x40 ) != 0 ) {
+            winMapBase = 0x400;
+        } else {
+            winMapBase = 0x0;
+        }
+        
+        if ( wy > ly )
+            return;
+
+        i = wx - 7;
+        if ( i < 0 )
+            i = 0;
+
+        while ( i < 160 ) {
+
+            if ( wx - 7 > i )
+                continue;
+
+            tileLine = windowLines / 8;
+            tileRow = ( i - wx + 7 ) / 8;
             tileOffset = ( (unsigned short)tileLine * (unsigned short)32 ) + (unsigned short)tileRow;
             tileNum = self->bgRamBytes[ winMapBase + tileOffset ];
 
-            if ( ( lcdc & 0x10 ) == 0 ) {
+            if ( ( lcdc & LCDC_BITS_BG_WINDOW_DATA_SELECT ) == 0 ) {
                 char tileFix = (char)tileNum;
                 tileFix = tileFix + 128;
                 tileNum = tileFix;
             }
 
-            pixLine = bgLine % 8;
-            pixRow = bgRow % 8;
+            pixLine = windowLines % 8;
+            pixRow = i % 8;
             tileByteIndex = pixLine * 2;
 
             upperByte = self->cRamBytes[ tileDataBase + ( tileNum * 16 ) + tileByteIndex ];
             lowerByte = self->cRamBytes[ tileDataBase + ( tileNum * 16 ) + tileByteIndex + 1 ];
-            palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
-            palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
-            *shade = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
+            for ( j = pixRow; (j < 8) && (i < 160); j++ ) {
+                palIndex = ( ( upperByte >> ( 7 - pixRow ) ) & 0x1 );
+                palIndex |= ( ( lowerByte >> ( 7 - pixRow ) ) & 0x1 ) << 1;
+                shade[i] = ( bgPal >> ( 2 * palIndex ) ) & 0x03;
+                bgPrio[i] = palIndex;
+                i++;
+                pixRow++;
+            }
         }
-		
+        windowLines++;
+    }
 }
 
-void RenderSprites( gbPpu_t *self, unsigned char *shade, unsigned short bgLine, unsigned short bgRow,
-						unsigned short tileDataBase, unsigned short bgMapBase, unsigned short winMapBase ) {
-						
-	int i;
+static void RenderSprites( gbPpu_t *self, unsigned char *bgPrio, unsigned char *shade ) {						
     unsigned char *oamBytes;
-	
-	if ( ! dmaTransferActive ) {
-            unsigned char numSprites = 0;
-            unsigned char bestSprites[40];
-            unsigned char bestX = 168, bestY = 160, bestSprite = 255, bestAttr = 0x00;
-            int spriteNum;
 
-            /* for some reason, using a memset here crashes on classic mac os */
-            for ( i = 0 ; i < 40; i++ ) {
-            	bestSprites[i] = 255;
-            }
+	if ( ( ( lcdc & LCDC_BITS_OBJ_ENABLE ) != 0) && !dmaTransferActive ) {
+        unsigned char sprite = 0;
+        unsigned char priority[40], spriteCount = 0;
+        int i, j;
+        
+        oamBytes = self->oamBytes;
+
+        /* first, get the eligible sprites */
+        for ( i = 0; i < 40; i++ ) {
+            unsigned char spriteY = oamBytes[( i * 4 )];
+            if ( ly < spriteY - 16 )
+                continue;
             
-            oamBytes = self->oamBytes;
-            for ( spriteNum = 39; spriteNum >= 0; spriteNum-- ) {
-                unsigned char spriteY, spriteX = oamBytes[( spriteNum * 4 ) + 1];
-                unsigned char spriteAttr;
-                if ( ! ( ( spriteX > 0 ) && ( spriteX < 168 ) && ( dotClock < spriteX ) && ( dotClock >= ( spriteX - 8 ) ) ) )
+            if ( ( lcdc & LCDC_BITS_OBJ_SIZE ) == 0 ) {
+                if ( ly >= spriteY - 8 ) {
                     continue;
-                spriteY = oamBytes[spriteNum * 4];
-                if ( ! ( ( spriteY > 0 ) && ( spriteY < 160 ) && ( ly < spriteY  ) && ( ly >= ( spriteY - 16 ) ) ) )
+                }
+            } else {
+                if ( ly >= spriteY ) {
                     continue;
-                if ( spriteX > bestX )
-                    continue;
-
-                spriteAttr = oamBytes[ ( spriteNum * 4 ) + 3];
-
-                bestX = spriteX;
-                bestY = spriteY;
-                bestSprite = spriteNum;
-                bestAttr = spriteAttr;
-                bestSprites[numSprites++] = bestSprite;
+                }
             }
-            tileDataBase = 0;
-            for ( i = 0; i < 10; i++ ) {
-                unsigned char spriteTile;
-                unsigned char spritePixRow;
-                unsigned char spritePixLine;
-                unsigned char tileByteIndex;
-
-                bestSprite = bestSprites[i];
-                if ( bestSprite == 255 )
-                    break;
-                bestX = oamBytes[ ( bestSprite * 4 ) + 1 ];
-                bestY = oamBytes[ bestSprite * 4 ];
-                bestAttr = oamBytes[( bestSprite* 4 ) + 3];
-                spriteTile = oamBytes[( bestSprite * 4 ) + 2];
-                spritePixRow = bestX - dotClock - 1;
-                spritePixLine = bestY - ly - 1;
-                if ( ( bestAttr & 0x20 ) == 0 )
-                    spritePixRow = 7 - spritePixRow;
-                if ( ( bestAttr & 0x40 ) == 0 ) {
-                    if ( ( lcdc & 0x04 ) == 0 ) {
-                        spritePixLine = ( 7 - spritePixLine ) + 8;
-                    } else {
-                        spritePixLine = ( 15 - spritePixLine );
-                    }
-                }
-                tileByteIndex = spritePixLine * 2;
-                if ( ( ( lcdc & 0x04 ) != 0 ) || ( spritePixLine < 8 ) ) {
-                    unsigned char upperByte = self->cRamBytes[ tileDataBase + ( spriteTile * 16 ) + tileByteIndex ];
-                    unsigned char lowerByte = self->cRamBytes[ tileDataBase + ( spriteTile * 16 ) + tileByteIndex + 1 ];
-                    unsigned char palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
-                    palIndex |= ( ( lowerByte >> ( 7 - spritePixRow ) ) & 0x1 ) << 1;
-                    if ( palIndex != 0 ) {
-                        if ( ( bestAttr & 0x10 ) == 0 )
-                            *shade = ( objPal0 >> ( 2 * palIndex ) ) & 0x03;
-                        else
-                            *shade = ( objPal1 >> ( 2 * palIndex ) ) & 0x03;
-                        break;
-                    }
-                }
-            }   
+            priority[spriteCount++] = i;
         }
+
+        if ( spriteCount == 0 )
+            return;
+
+        /* selection sort by x, since it's simple to implement and as i write this
+            i am not awake enough to do it properly. 
+            todo: replace with partial merge sort. 
+            also todo: investigate caching results?
+            */
+        for ( i = 0; i < spriteCount; i++ ) {
+            unsigned char xA = oamBytes[(priority[i] * 4) + 1];
+            unsigned char minXSprite = i, minX = xA, minXSpriteVal;
+            for ( j = i + 1; j < spriteCount; j++ ) {
+                unsigned char xB = oamBytes[(priority[j] * 4) + 1];
+                if ( xB < minX ) {
+                    minX = xB;
+                    minXSprite = j;
+                }
+            }
+            if ( minXSprite != i ) {
+                minXSpriteVal = priority[minXSprite];
+                priority[minXSprite] = priority[i];
+                priority[i] = minXSpriteVal;
+            }
+        }
+
+        /* limit to 10 sprites per line */
+        if ( spriteCount > 10 ) {
+            spriteCount = 10;
+        }
+
+        /* render the actual sprites, in priority order, running from left to right */
+        for ( i = spriteCount - 1; i >= 0; --i ) {
+            unsigned char spriteTile, spriteX, spriteY, spriteAttr, spritePixRow, spritePixLine, tileByteIndex;
+
+            sprite = priority[i];
+            spriteX = oamBytes[ ( sprite * 4 ) + 1 ];
+            spriteY = oamBytes[ sprite * 4 ];
+            spriteAttr = oamBytes[( sprite * 4 ) + 3];
+            spriteTile = oamBytes[( sprite * 4 ) + 2];
+            spritePixLine = spriteY - ly - 1;
+
+            if ( ( spriteAttr & OBJATTR_BITS_Y_FLIP ) == 0 ) {
+                spritePixLine = ( 15 - spritePixLine );
+            } else if ( ( lcdc & LCDC_BITS_OBJ_SIZE ) == 0 ) {
+                spritePixLine -= 8;
+            }
+
+            if ( ( lcdc & LCDC_BITS_OBJ_SIZE ) != 0 ) {
+                spriteTile &= 0xFE;
+            }
+
+            tileByteIndex = spritePixLine * 2;
+            
+            j = spriteX - 8;
+            if ( j < 0 )
+                j = 0;
+
+            for ( ; ( j < spriteX ) && ( j < 160 ) ; j++ ) {
+                if ( ( spriteAttr & OBJATTR_BITS_X_FLIP ) == 0 ) {
+                    spritePixRow = j - ( spriteX - 8 );
+                } else {
+                    spritePixRow = 7 - ( j - ( spriteX - 8 ) );
+                }
+
+                unsigned char upperByte = self->cRamBytes[ ( spriteTile * 16 ) + tileByteIndex ];
+                unsigned char lowerByte = self->cRamBytes[ ( spriteTile * 16 ) + tileByteIndex + 1 ];
+                unsigned char palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
+                palIndex |= ( ( lowerByte >> ( 7 - spritePixRow ) ) & 0x1 ) << 1;
+                if ( palIndex != 0 ) {
+                    unsigned char s;
+
+                    if ( ( spriteAttr & OBJATTR_BITS_LAYER ) != 0 ) {
+                        if ( bgPrio[j] > 0 ) {
+                            continue;
+                        }
+                    }
+
+                    if ( ( spriteAttr & OBJATTR_BITS_DMG_PALNUM ) == 0 )
+                        s = ( objPal0 >> ( 2 * palIndex ) ) & 0x03;
+                    else
+                        s = ( objPal1 >> ( 2 * palIndex ) ) & 0x03;
+
+                    shade[j] = s;
+                }
+            }
+        }
+    }
+}
+
+static void RenderLine( gbPpu_t *self ) {
+    unsigned char bgPrio[160], shades[160];
+    unsigned short tileDataBase = 0;
+    int i;
+
+    if ( ( lcdc & LCDC_BITS_BG_WINDOW_DATA_SELECT ) == 0 ) {
+        tileDataBase += 0x800;
+    }
+
+    memset( &shades, 0, sizeof(shades) );
+    memset( &bgPrio, 0, sizeof(bgPrio) );
+
+    if ( enabled ) {
+        RenderBackground( self, bgPrio, shades, tileDataBase );
+        RenderWindow( self, bgPrio, shades, tileDataBase );
+        RenderSprites( self, bgPrio, shades );
+        for ( i = 0; i < 160; i++ ) {
+            IO_DrawPixel24( i, ly, colors[shades[i]][0], colors[shades[i]][1], colors[shades[i]][2] );
+        }
+    }
 }
 
 static void Step( gbPpu_t *self ) {
-    unsigned char shade = 0;
-    unsigned short tileDataBase = 0x0000, bgMapBase= 0x0000, winMapBase = 0x0000;
-
     lcdStat = lcdStat & 0xfc;
 
     if ( dotDelay > 0 ) {
@@ -254,31 +349,10 @@ static void Step( gbPpu_t *self ) {
     }
 
     if ( ( dotClock < 160 ) && ( ly < 144 ) ) {
-        unsigned short bgLine = 0, bgRow = 0;
-        if ( ( lcdc & 0x10 ) == 0 ) {
-            tileDataBase += 0x800;
-        }
-        /*  */
-        /*  render background */
-        /*  */
-	    RenderBackground( self, &shade, bgLine, bgRow, tileDataBase, bgMapBase, winMapBase );
-        /*  */
-        /*  render window */
-        /*  */
-        bgLine = ly - wy - 1;
-        bgRow = dotClock - ( wx - 8 );
-        
-		RenderWindow( self, &shade, bgLine, bgRow, tileDataBase, bgMapBase, winMapBase );
-        /*  */
-        /*  render sprites */
-        /*  */
-        RenderSprites( self, &shade, bgLine, bgRow, tileDataBase, bgMapBase, winMapBase );
-
-        if ( enabled )
-            IO_DrawPixel24( dotClock, ly, colors[shade][0], colors[shade][1], colors[shade][2] );
         lcdStat |= 0x03;
     } else if ( ly < 144 ) {
         if ( dotClock == 160 ) {
+            RenderLine( self );
             if ( ( lcdStat & 0x08 ) != 0 ) {
                 self->cpu->Interrupt( self->cpu, 1 );
             }
@@ -297,6 +371,7 @@ static void Step( gbPpu_t *self ) {
         }
         if ( ly == 144 ) {
             self->cpu->Interrupt( self->cpu, 0 );
+            windowLines = 0;
             if ( ( lcdStat & 0x10 ) != 0 ) {
                 self->cpu->Interrupt( self->cpu, 1 );
             }

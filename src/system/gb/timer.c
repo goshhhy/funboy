@@ -57,26 +57,24 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
 
     enabled = ( ( control & 4 ) != 0 );
     
-    fprintf( stderr, "timer set!\n");
+    fprintf( stderr, "timer set! ctrl %02x\n", control & 0x03 );
 }
 
 static void Step( gbTimer_t *self ) {
     unsigned char selectors_pre[4] = { 0, 0, 0, 0 }, selectors_post[4] = { 0, 0, 0, 0 };
     
     if ( enabled && overflowed ) {
-        if ( ( self->cpu->bus->Read8( self->cpu->bus, 0xff0f, 0 ) & 0x04 ) == 0 ) {
             /* printf( "timer interrupt!\n" ); */
             /* fprintf( stderr, "timer interrupt!\n" );  */
             self->cpu->Interrupt( self->cpu, 2 );
-        }
         countReg = modulo;
         overflowed = 0;
-    }
+    } 
 
-    selectors_pre[0] = ( divReg & 0x02 ) >> 1;
-    selectors_pre[1] = ( divSubcount & 0x08 ) >> 3;
-    selectors_pre[2] = ( divSubcount & 0x20 ) >> 5;
-    selectors_pre[3] = ( divSubcount & 0x80 ) >> 7;
+    selectors_pre[0] = ( divReg & 0x04 ) >> 2;
+    selectors_pre[1] = ( divSubcount & 0x10 ) >> 4;
+    selectors_pre[2] = ( divSubcount & 0x40 ) >> 6;
+    selectors_pre[3] = ( divReg & 0x01 );
 
     divSubcount++;
     if ( divSubcount == 0 ) {
@@ -86,12 +84,12 @@ static void Step( gbTimer_t *self ) {
     if ( !enabled )
         return;
 
-    selectors_post[0] = ( divReg & 0x02 ) >> 1;
-    selectors_post[1] = ( divSubcount & 0x08 ) >> 3;
-    selectors_post[2] = ( divSubcount & 0x20 ) >> 5;
-    selectors_post[3] = ( divSubcount & 0x80 ) >> 7;
+    selectors_post[0] = ( divReg & 0x04 ) >> 2;
+    selectors_post[1] = ( divSubcount & 0x10 ) >> 4;
+    selectors_post[2] = ( divSubcount & 0x40 ) >> 6;
+    selectors_post[3] = ( divReg & 0x01 );
 
-    if ( selectors_pre[control & 0x03] > selectors_post[control & 0x03] ) {
+    if ( selectors_pre[control & 0x03] != selectors_post[control & 0x03] ) {
         countReg++;
         if ( countReg == 0 ) {
             overflowed = 1;

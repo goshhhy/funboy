@@ -70,6 +70,7 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
             fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
         } else {
             ;; /* fprintf( stderr, "lcd disabled\n" ); */
+            dotClock = dotDelay = dotDelayTotal = 0;
         }
         for ( y = 0; y < 144; y++ ) {
             for ( x = 0; x < 160; x++ ) {
@@ -77,7 +78,6 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
             }
         }
         ly = 0;
-        dotClock = dotDelay = dotDelayTotal = 0;
     }
     enabled = set_enabled;
 }
@@ -109,7 +109,7 @@ static void RenderBackground( gbPpu_t *self, unsigned char *bgPrio, unsigned cha
             tileOffset = ( tileLine * 32 ) + tileRow;
 
             if ( ( lcdc & LCDC_BITS_BG_WINDOW_DATA_SELECT ) == 0 ) {
-                tileNum = (char)(self->bgRamBytes[ bgMapBase + tileOffset ]) + 128;
+                tileNum = (signed char)(self->bgRamBytes[ bgMapBase + tileOffset ]) + 128;
             } else {
                 tileNum = (unsigned char)(self->bgRamBytes[ bgMapBase + tileOffset ]);
             }
@@ -165,7 +165,7 @@ static void RenderWindow( gbPpu_t *self, unsigned char *bgPrio, unsigned char *s
             tileNum = self->bgRamBytes[ winMapBase + tileOffset ];
 
             if ( ( lcdc & LCDC_BITS_BG_WINDOW_DATA_SELECT ) == 0 ) {
-                char tileFix = (char)tileNum;
+                char tileFix = (signed char)tileNum;
                 tileFix = tileFix + 128;
                 tileNum = tileFix;
             }
@@ -347,6 +347,9 @@ static void Step( gbPpu_t *self ) {
             }
         }
     }
+
+    if ( !enabled )
+        return;
 
     if ( ( dotClock < 160 ) && ( ly < 144 ) ) {
         lcdStat |= 0x03;

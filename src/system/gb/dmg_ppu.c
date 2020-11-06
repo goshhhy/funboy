@@ -275,15 +275,16 @@ static void RenderSprites( gbPpu_t *self, unsigned char *bgPrio, unsigned char *
                 j = 0;
 
             for ( ; ( j < spriteX ) && ( j < 160 ) ; j++ ) {
+                unsigned char upperByte, lowerByte, palIndex;
                 if ( ( spriteAttr & OBJATTR_BITS_X_FLIP ) == 0 ) {
                     spritePixRow = j - ( spriteX - 8 );
                 } else {
                     spritePixRow = 7 - ( j - ( spriteX - 8 ) );
                 }
 
-                unsigned char upperByte = self->cRamBytes[ ( spriteTile * 16 ) + tileByteIndex ];
-                unsigned char lowerByte = self->cRamBytes[ ( spriteTile * 16 ) + tileByteIndex + 1 ];
-                unsigned char palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
+                upperByte = self->cRamBytes[ ( spriteTile * 16 ) + tileByteIndex ];
+                lowerByte = self->cRamBytes[ ( spriteTile * 16 ) + tileByteIndex + 1 ];
+                palIndex = ( ( upperByte >> ( 7 - spritePixRow ) ) & 0x1 );
                 palIndex |= ( ( lowerByte >> ( 7 - spritePixRow ) ) & 0x1 ) << 1;
                 if ( palIndex != 0 ) {
                     unsigned char s;

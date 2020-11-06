@@ -1,6 +1,7 @@
 #include <SDL.h>
 
 #include "io.h"
+#include "gb.h"
 
 SDL_Window* window = NULL;
 SDL_Surface* windowSurf = NULL;

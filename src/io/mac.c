@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "gb.h"
 #include "io.h"
 
 Rect windRect;
@@ -68,6 +69,7 @@ void Initialize(void) {
 }
 
 int IO_Init( int vWidth, int vHeight, int rWidth, int rHeight ) {
+	IO_SetRenderRes( rWidth, rHeight );
 	return 0;
 }
 

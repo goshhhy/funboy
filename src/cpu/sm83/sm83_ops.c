@@ -213,12 +213,12 @@ void op_jp( sm83_t* cpu ) {
 }
 
 void op_jr( sm83_t* cpu ) {
-    cpu->pc = cpu->pc + (char)read8( cpu, cpu->pc + 1, 1 ) + 1;
+    cpu->pc = ( cpu->pc + (signed char)read8( cpu, cpu->pc + 1, 1 ) ) + 1;
 }
 
 void op_jrx( sm83_t* cpu ) {
     if ( NzNc( cpu ) ) {
-        cpu->pc = cpu->pc + (char)read8( cpu, cpu->pc + 1, 1 );
+        cpu->pc = cpu->pc + (signed char)read8( cpu, cpu->pc + 1, 1 );
         cpu->timetarget += 4;
     }
     cpu->pc++;
@@ -281,7 +281,7 @@ void op_psh( sm83_t *cpu ) {
 }
 
 void op_edi( sm83_t *cpu ) {
-    cpu->ifl = CPU_BITS_Q(cpu);
+    cpu->ifl_next = CPU_BITS_Q(cpu);
 }
 
 void op_stop( sm83_t *cpu ) {
@@ -316,7 +316,7 @@ void op_fa( sm83_t *cpu ) {
 
 void op_addsp( sm83_t *cpu ) {
     unsigned long oldsp = cpu->sp;
-    char val = (char)read8( cpu, ++cpu->pc, 1 );
+    char val = (signed char)read8( cpu, ++cpu->pc, 1 );
     cpu->sp = cpu->sp + val;
     SetFlags( cpu, 0, 0, ( oldsp & 0xf ) > ( cpu->sp & 0xf ), ( oldsp & 0xff ) > ( cpu->sp & 0xff ) );
 }
@@ -326,7 +326,7 @@ void op_jphl( sm83_t *cpu ) {
 }
 
 void op_lhlsi( sm83_t *cpu ) {
-    char val = (char)read8( cpu, ++cpu->pc, 1 );
+    char val = (signed char)read8( cpu, ++cpu->pc, 1 );
     SET_HL( (short)cpu->sp + val );
     SetFlags( cpu, 0, 0, ( READ_HL & 0xf ) < ( cpu->sp & 0xf ), ( READ_HL & 0xff ) < ( cpu->sp & 0xff ) );
 }

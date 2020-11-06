@@ -151,9 +151,9 @@ void IO_DrawPixel24( int x, int y, unsigned char r, unsigned char g, unsigned ch
 	if ( !screen ) 
 		return;
 	
-	c.red = r;
-	c.green = g;
-	c.blue = b;
+	c.red = r << 8;
+	c.green = g << 8;
+	c.blue = b << 8;
 	
 	if ( ( x < 0 ) || ( y < 0 ) || ( x >= renderWidth ) || ( y >= renderHeight ) ) {
 		printf("bad pixel! [%i,%i]\n", x, y);

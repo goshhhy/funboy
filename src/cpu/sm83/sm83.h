@@ -1,7 +1,7 @@
 #pragma pack(1)
 
 typedef struct sm83_s { 
-	unsigned char b, c, d, e, h, l, a, f, ifl;
+	unsigned char b, c, d, e, h, l, a, f, ifl, ifl_next;
 	unsigned short sp, pc;
 	/* internal state */ 
 	unsigned char op;

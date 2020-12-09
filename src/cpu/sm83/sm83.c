@@ -227,11 +227,11 @@ static void Step( sm83_t *cpu ) {
         return;
 
     if ( ! cpu->halted ) {
-    	
+    	/*
         printf("[%04x] %02x b:%02x c:%02x d:%02x e:%02x h:%02x l:%02x a:%02x f:%02x\n", 
     				cpu->pc, cpu->op,
     				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f );
-        
+        */
         ops[cpu->op]( cpu );
         cpu->pc++;
     }

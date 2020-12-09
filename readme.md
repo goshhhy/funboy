@@ -1,5 +1,7 @@
 # funboy
 
+![funboy playing pokemon red](doc/funboy_demo.png)
+
 this is a gameboy emulator which currently only emulates the original gameboy.
 
 it is designed to be relatively simple while also making efficient use of cpu time,

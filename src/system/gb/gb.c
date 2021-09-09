@@ -132,13 +132,6 @@ int gb_main( char *rompath ) {
     MapGbRegs( gbbus );
     SerialToStderr( gbbus );
 
-    cpu = Sm83( gbbus );
-    timer = GbTimer( gbbus, cpu );
-    ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
-    GbInput( gbbus, cpu );
-
-    IO_SetEmuName( "funboy!" );
-    
     rom = LoadRom( rompath );
 
     GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
@@ -150,6 +143,14 @@ int gb_main( char *rompath ) {
     GenericBusMapping( gbbus, "oam",     0xfe00, 0xfe9f, oam );
     GenericBusMapping( gbbus, "zpage",   0xff80, 0xfffe, zpage );
 
+    cpu = Sm83( gbbus );
+    timer = GbTimer( gbbus, cpu );
+    GbInput( gbbus, cpu );
+
+    /* init ppu last, since it sets up the benchmark timer */
+    ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
+    IO_SetEmuName( "funboy!" );
+    
     while ( go ) {
         for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {
             cpu->Step( cpu );

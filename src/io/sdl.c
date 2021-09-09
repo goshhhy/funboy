@@ -1,4 +1,5 @@
 #include <SDL.h>
+#include <time.h>
 
 #include "io.h"
 #include "gb.h"
@@ -12,6 +13,10 @@ static int borderSize = 4;
 int renderScale = 4;
 int useScanLines = 0;
 int useDotsFilter = 1;
+
+int benchmark = 0;
+int benchmark_limit = 0;
+clock_t benchmark_time;
 
 const char* emuName = "funboy!";
 
@@ -65,6 +70,8 @@ int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight ) {
 	SDL_FillRect( renderSurf, NULL, SDL_MapRGB( renderSurf->format, 0x00, 0x00, 0x22 ) );
 	SDL_FillRect( pixelSurf, NULL, SDL_MapRGB( pixelSurf->format, 0x00, 0x00, 0x00 ) );
 	SDL_UpdateWindowSurface( window );
+
+	benchmark_time = clock();
 
 	return 0;
 }
@@ -180,6 +187,16 @@ int IO_Update( void ) {
 				break;
 		}
 	}
+
+	if ( benchmark_limit > 0 ) {
+		if ( ++benchmark == benchmark_limit ) {
+			clock_t end = clock();
+			r = 0;
+
+			printf( "%i frames in %f cpu secs\n", benchmark, ((double)(end - benchmark_time)) / CLOCKS_PER_SEC );
+		}
+	}
+
 	return r;
 }
 
@@ -190,6 +207,20 @@ void IO_SetPaletteColor( int index, unsigned char r, unsigned char g, unsigned c
 	return;
 }
 
+int printusage( void ) {
+	printf("usage: funboy [filename] <benchmark_frames>\n");
+	return 1;
+}
+
 int main( int argc, char **argv ) {
+
+	if ( argc < 2 ) {
+		return printusage();
+	}
+	
+	if ( argc == 3 ) {
+		benchmark_limit = atoi( argv[2] );
+	}
+
 	gb_main(argv[1]);
 }

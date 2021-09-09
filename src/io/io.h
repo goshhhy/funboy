@@ -8,3 +8,5 @@ void IO_SetKeyPressCallback( void (*Callback)( int key ) );
 void IO_SetKeyReleaseCallback( void (*Callback)( int key ) );
 void IO_SetTitle( const char* title );
 void IO_SetEmuName( const char* name );
+void IO_SetPaletteColor( int index, unsigned char r, unsigned char g, unsigned char b );
+void IO_SetPalette( unsigned char * pal );

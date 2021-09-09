@@ -21,6 +21,8 @@ int renderWidth, renderHeight;
 
 uint8_t* screen = NULL;
 
+unsigned char palette[768];
+
 void (*KeyPressCallback)( int key ) = NULL;
 void (*KeyReleaseCallback)( int key ) = NULL;
 
@@ -40,13 +42,14 @@ void IO_SetRenderRes( int x, int y ) {
 }
 
 void IO_SetBg( uint8_t r, uint8_t g, uint8_t b ) {
+	IO_SetPaletteColor( 255, r, g, b );
 	bgRed = r;
 	bgGreen = g;
 	bgBlue = b;
 }
 
 int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight ) {
-	window = SDL_CreateWindow( "kutaragi!", -1, -1, wWidth, wHeight, 0 );
+	window = SDL_CreateWindow( "kutaragi!", -1, -1, ( rWidth + ( 2 * borderSize ) ) * renderScale, ( rHeight + ( 2 * borderSize ) ) * renderScale, 0 );
 	if ( !window ) {
 		printf( "failed to create window\n" );
 		return 1;
@@ -76,6 +79,12 @@ void IO_SetTitle( const char* title ) {
 	strcat( final, " - " );
 	strncat( final, title, 16 );
 	SDL_SetWindowTitle( window, final );
+}
+
+void IO_DrawPixel8( int x, int y, unsigned char index ) {
+	screen[(renderWidth * y * 3) + (x * 3) + 0] = palette[index * 3];
+	screen[(renderWidth * y * 3) + (x * 3) + 1] = palette[index * 3 + 1];
+	screen[(renderWidth * y * 3) + (x * 3) + 2] = palette[index * 3 + 2];
 }
 
 void IO_DrawPixel24( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {
@@ -126,7 +135,7 @@ void IO_ScreenCopy( void ) {
 				SDL_FillRect( pixelSurf, &dim, SDL_MapRGB( pixelSurf->format, r, g, b ) );
 				SDL_FillRect( pixelSurf, &dim2, SDL_MapRGB( pixelSurf->format, r * 0.85, g * 0.85, b * 0.85 ) );
 			} else {
-				SDL_FillRect( pixelSurf, &dim, SDL_MapRGB( pixelSurf->format, r, g, b ) );
+				SDL_FillRect( renderSurf, &dim, SDL_MapRGB( pixelSurf->format, r, g, b ) );
 			}
 		}
 	}
@@ -172,6 +181,13 @@ int IO_Update( void ) {
 		}
 	}
 	return r;
+}
+
+void IO_SetPaletteColor( int index, unsigned char r, unsigned char g, unsigned char b ) {
+	palette[index * 3] = r;
+	palette[index * 3 + 1] = g;
+	palette[index * 3 + 2] = b;
+	return;
 }
 
 int main( int argc, char **argv ) {

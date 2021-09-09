@@ -74,7 +74,8 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
         }
         for ( y = 0; y < 144; y++ ) {
             for ( x = 0; x < 160; x++ ) {
-                IO_DrawPixel24( x, y, colors[0][0], colors[0][1], colors[0][2] );
+                //IO_DrawPixel24( x, y, colors[0][0], colors[0][1], colors[0][2] );
+                IO_DrawPixel8( x, y, 0 );
             }
         }
         ly = 0;
@@ -324,7 +325,8 @@ static void RenderLine( gbPpu_t *self ) {
         RenderWindow( self, bgPrio, shades, tileDataBase );
         RenderSprites( self, bgPrio, shades );
         for ( i = 0; i < 160; i++ ) {
-            IO_DrawPixel24( i, ly, colors[shades[i]][0], colors[shades[i]][1], colors[shades[i]][2] );
+            //IO_DrawPixel24( i, ly, colors[shades[i]][0], colors[shades[i]][1], colors[shades[i]][2] );
+            IO_DrawPixel8( i, ly, shades[i] );
         }
     }
 }
@@ -393,6 +395,7 @@ static void Step( gbPpu_t *self ) {
 }
 
 gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *cRam, busDevice_t *oam ) {
+    int i;
     gbPpu_t *ppu = malloc( sizeof( gbPpu_t ) );
     ppu->Step = Step;
     ppu->cpu = cpu;
@@ -407,8 +410,12 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     ppu->cRamBytes = cRam->DataPtr(cRam);
     ppu->oamBytes = oam->DataPtr(oam);
 
-    IO_Init( 640 + 32, 576 + 32, 160, 144 );
+    IO_Init( 640, 576, 160, 144 );
     IO_SetBg( 0xf0, 0xf0, 0xd0 );
+
+    for ( i = 0; i < 4; i++ ) {
+        IO_SetPaletteColor( i, colors[i][0], colors[i][1], colors[i][2] );
+    }
 
     enabled = 1;
     lcdc = lcdStat = 0;

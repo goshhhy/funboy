@@ -10,6 +10,7 @@
 #include <OSUtils.h>
 #include <ToolUtils.h>
 #include <SegLoad.h>
+#include <Palettes.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +18,15 @@
 #include "gb.h"
 #include "io.h"
 
-Rect windRect;
+Rect gbRect, windRect;
 WindowPtr	mainPtr;
 
-RGBColor * screen = NULL;
+char * screen = NULL;
 int renderWidth, renderHeight;
+
+PaletteHandle palette;
+
+PixMapHandle pixmap;
 
 void Initialize(void);
 
@@ -29,6 +34,18 @@ void main(void)
 {
 	Initialize();
 	gb_main( "cpu_instrs.gb" );
+}
+
+void IO_SetPaletteColor( int index, unsigned char r, unsigned char g, unsigned char b ) {
+	RGBColor c;
+	
+	c.red = r << 8;
+	c.green = g << 8;
+	c.blue = b << 8;
+
+	SetEntryColor( palette, index, &c );
+	Palette2CTab(palette, (**pixmap).pmTable);
+	return;
 }
 
 void Initialize(void) {
@@ -47,6 +64,8 @@ void Initialize(void) {
 	InitDialogs(nil);
 	InitCursor();
 
+	palette = NewPalette( 192, nil, pmTolerant, 0x5000 );
+
 	windRect.top = 50;
 	windRect.left = 50;
 	windRect.bottom = 50 + 144;
@@ -57,6 +76,8 @@ void Initialize(void) {
 	SetPort(mainPtr);
 	MoveTo(0, 0);
 	
+	pixmap = NewPixMap();
+
 	fg.red = 0;
 	fg.green = 0;
 	fg.blue = 0;
@@ -66,6 +87,8 @@ void Initialize(void) {
 	
 	RGBForeColor(&fg);
 	RGBBackColor(&bg);
+
+	printf("start\n");
 }
 
 int IO_Init( int vWidth, int vHeight, int rWidth, int rHeight ) {
@@ -77,9 +100,7 @@ int IO_Update( void ) {
 	int eventMask = mDownMask | mUpMask | keyDownMask | keyUpMask | updateMask | activMask;
 	EventRecord e;
 	WindowPtr window;
-	
-	printf("io_update()\n");
-	
+		
 	SystemTask();
 	while( GetNextEvent( everyEvent, &e ) ) {
 		switch ( e.what ) {
@@ -107,16 +128,18 @@ int IO_Update( void ) {
 			case updateEvt: {
 				int x, y;
 				Rect r = qd.thePort->portRect;
+				WindowPtr wind = (WindowPtr)e.message;
 				
-				
-				BeginUpdate( (WindowPtr)e.message );
-				SetPort(mainPtr);
-				EraseRect(&r);
-				for ( y = 0; y < renderHeight; y++ ) {
-					for ( x = 0; x < renderWidth; x++ ) {
-						SetCPixel( x, y, &screen[ ( y * renderWidth ) + x ] );
-					}
-				}
+				BeginUpdate( wind );
+				SetPort( mainPtr );
+
+				ForeColor( blackColor );
+				BackColor( whiteColor );
+
+				EraseRect( &r );
+				CopyBits( *pixmap, *(((CGrafPtr)wind)->portPixMap),
+						&gbRect, &(wind->portRect),
+						srcCopy, NULL);
 				
 				EndUpdate( (WindowPtr)e.message );
 				break;
@@ -125,20 +148,36 @@ int IO_Update( void ) {
 				break;
 		}		
 	}
-	
-	printf("end io_update()\n");
-	
+		
 	return 1;
 }
 
 void IO_SetRenderRes( int x, int y ) {
 	renderWidth = x;
 	renderHeight = y;
-	
+
 	if ( screen )
 		free( screen );
 	
-	screen = malloc( sizeof( RGBColor ) * x * y );
+	screen = malloc( sizeof( char ) * x * y );
+
+	gbRect.top = 0;
+	gbRect.left = 0;
+	gbRect.right = x;
+	gbRect.bottom = y;
+
+	(**pixmap).bounds = gbRect;
+	(**pixmap).pixelSize = 8;
+	(**pixmap).cmpSize = 8;
+	(**pixmap).pixelType = 0;
+	(**pixmap).cmpCount = 1;
+	(**pixmap).packType = 0;
+	(**pixmap).planeBytes = 0;
+	(**pixmap).pmVersion = 0;
+	(**pixmap).rowBytes = x | 0x8000;
+	(**pixmap).baseAddr = screen;
+
+	Palette2CTab(palette, (**pixmap).pmTable);
 
 	printf("render res set to %d by %d", x, y);
 
@@ -146,7 +185,7 @@ void IO_SetRenderRes( int x, int y ) {
 }
 
 void IO_DrawPixel24( int x, int y, unsigned char r, unsigned char g, unsigned char b ) {
-	RGBColor c;
+	/*RGBColor c;
 	
 	if ( !screen ) 
 		return;
@@ -160,8 +199,19 @@ void IO_DrawPixel24( int x, int y, unsigned char r, unsigned char g, unsigned ch
 	}
 	
 	screen[ ( y * renderWidth ) + x ] = c;
-	
+	*/
 	return;
+}
+
+void IO_DrawPixel8( int x, int y, unsigned char c ) {
+	if ( !screen ) 
+		return;
+	
+	if ( ( x < 0 ) || ( y < 0 ) || ( x >= renderWidth ) || ( y >= renderHeight ) ) {
+		printf("bad pixel! [%i,%i]\n", x, y);
+	}
+	
+	screen[ ( y * renderWidth ) + x ] = c;
 }
 
 void IO_SetBg( unsigned char r, unsigned char g, unsigned char b ) {

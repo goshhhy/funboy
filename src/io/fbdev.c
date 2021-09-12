@@ -26,6 +26,7 @@ clock_t benchmark_time;
 const char* emuName = "funboy!";
 
 int renderWidth, renderHeight;
+int xAdjust, yAdjust;
 
 char * fbdev_path = "/dev/fb0";
 struct fb_cmap cmap;
@@ -48,6 +49,9 @@ void IO_SetRenderRes( int x, int y ) {
 
 	renderWidth = x;
 	renderHeight = y;
+
+	xAdjust = 160 - (renderWidth / 2);
+	yAdjust = 120 - (renderHeight / 2);
 }
 
 void IO_SetBg( uint8_t r, uint8_t g, uint8_t b ) {
@@ -139,12 +143,10 @@ void IO_SetTitle( const char* title ) {
 }
 
 void IO_DrawPixel8( int x, int y, unsigned char color ) {
-	y += 120 - (renderHeight / 2);
-	x += 160 - (renderWidth / 2);
+	y += yAdjust;
 
-	int l = (linewidth * y) + (x * 2);
-	screen[l++] = color;
-	screen[l] = color;
+	int l = (linewidth * y) + (x * 2) + xAdjust;
+	screen[l++] = screen[l+1] = color;
 }
 
 void IO_DrawPixel24( int x, int y, uint8_t r, uint8_t g, uint8_t b ) {

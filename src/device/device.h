@@ -1,5 +1,5 @@
 
-typedef unsigned long busAddress_t;
+typedef unsigned short busAddress_t;
 
 typedef struct busDevice_s {
     void* data;

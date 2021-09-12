@@ -20,5 +20,6 @@ executable('funboy', [frontend_sources, 'src/cpu/sm83/sm83.c', 'src/cpu/sm83/sm8
                         'src/system/gb/serial_log.c', 'src/system/gb/timer.c',
                         'src/system/gb/dmg_ppu.c', 'src/system/gb/input.c',
                         'src/system/gb/mbc1.c', 'src/system/gb/mbc3.c',
+                        'src/alarms.c',
                         ], dependencies : [frontend_deps], install : true, include_directories : includes)
 

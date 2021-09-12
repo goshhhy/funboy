@@ -1,9 +1,9 @@
 
 
-// uncomment for 32-bit bus size
-//#define BUS_SIZE_32
+/* uncomment for 32-bit bus size */
+/* #define BUS_SIZE_32 */
 
-// uncomment for faster, but more memory intensive, 16-bit bus mapping method
+/* uncomment for faster, but more memory intensive, 16-bit bus mapping method */
 #define BUS_MAP_FAST16
 
 #ifdef BUS_SIZE_32

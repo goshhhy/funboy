@@ -9,7 +9,7 @@ typedef struct romInfo_s {
     char* bytes;
 } romInfo_t;
 
-static unsigned char GenericRomRead( busDevice_t *dev, unsigned long addr, int final ) {
+static unsigned char GenericRomRead( busDevice_t *dev, busAddress_t addr, int final ) {
     romInfo_t *rom;
 
     if ( !dev || !dev->data )
@@ -24,7 +24,7 @@ static unsigned char GenericRomRead( busDevice_t *dev, unsigned long addr, int f
 }
 
 
-static void GenericRomWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void GenericRomWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     romInfo_t *rom;
 
     if ( !dev || !dev->data )

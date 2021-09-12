@@ -41,12 +41,12 @@ typedef struct regInfo_s {
 } regInfo_t;
 
 
-static void DmaRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     dmaTransferActive = 1;
     dmaAddress = (unsigned short)val << 8;
 }
 
-static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
     int x, y;
     int set_enabled;
@@ -74,7 +74,7 @@ static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned
         }
         for ( y = 0; y < 144; y++ ) {
             for ( x = 0; x < 160; x++ ) {
-                //IO_DrawPixel24( x, y, colors[0][0], colors[0][1], colors[0][2] );
+                /*IO_DrawPixel24( x, y, colors[0][0], colors[0][1], colors[0][2] );*/
                 IO_DrawPixel8( x, y, 0 );
             }
         }
@@ -325,7 +325,7 @@ static void RenderLine( gbPpu_t *self ) {
         RenderWindow( self, bgPrio, shades, tileDataBase );
         RenderSprites( self, bgPrio, shades );
         for ( i = 0; i < 160; i++ ) {
-            //IO_DrawPixel24( i, ly, colors[shades[i]][0], colors[shades[i]][1], colors[shades[i]][2] );
+            /*IO_DrawPixel24( i, ly, colors[shades[i]][0], colors[shades[i]][1], colors[shades[i]][2] );*/
             IO_DrawPixel8( i, ly, shades[i] );
         }
     }

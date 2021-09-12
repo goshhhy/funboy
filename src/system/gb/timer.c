@@ -25,7 +25,7 @@ static unsigned char control;
 static int interrupt_wait;
 static int overflowed;
 
-static void DivRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void DivRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -41,7 +41,7 @@ static void DivRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned cha
     divSubcount = 0;
 }
 
-static void ControlRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )

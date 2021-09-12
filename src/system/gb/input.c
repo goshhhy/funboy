@@ -19,7 +19,7 @@ static int padsSelected = 0;
 static unsigned char padStatus = 0xff;
 static unsigned char buttonStatus = 0xff;
 
-static void JoyRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void JoyRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     if ( ( val & 0x20 ) == 0 ) {
         buttonsSelected = 1;
     } else {
@@ -32,7 +32,7 @@ static void JoyRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned cha
     }
 }
 
-static unsigned char JoyRegisterRead( busDevice_t *dev, unsigned long addr, int final ) {
+static unsigned char JoyRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
     unsigned char r = 0;
 
 

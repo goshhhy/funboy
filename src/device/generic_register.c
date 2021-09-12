@@ -11,7 +11,7 @@ typedef struct regInfo_s {
     unsigned char* data;
 } regInfo_t;
 
-static unsigned char GenericRegisterRead( busDevice_t *dev, unsigned long addr, int final ) {
+static unsigned char GenericRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -31,7 +31,7 @@ static unsigned char GenericRegisterRead( busDevice_t *dev, unsigned long addr, 
 }
 
 
-static void GenericRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void GenericRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -60,8 +60,8 @@ unsigned char *GenericRegisterdataPtr( busDevice_t *dev ) {
     return reg->data;
 }
 
-busDevice_t *GenericRegister( char *name, unsigned char *data, size_t len, unsigned char (*Read8)( struct busDevice_s* self, unsigned long addr, int final ),
-                                    void (*Write8)( struct busDevice_s* self, unsigned long addr, unsigned char val, int final ) ) {
+busDevice_t *GenericRegister( char *name, unsigned char *data, size_t len, unsigned char (*Read8)( struct busDevice_s* self, busAddress_t addr, int final ),
+                                    void (*Write8)( struct busDevice_s* self, busAddress_t addr, unsigned char val, int final ) ) {
     busDevice_t *dev;
     regInfo_t *reg;
 

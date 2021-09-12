@@ -13,7 +13,7 @@ typedef struct regInfo_s {
 
 unsigned char datReg = 0;
 
-static unsigned char SerialRegisterRead( busDevice_t *dev, unsigned long addr, int final ) {
+static unsigned char SerialRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )
@@ -31,7 +31,7 @@ static unsigned char SerialRegisterRead( busDevice_t *dev, unsigned long addr, i
     return 0;
 }
 
-static void SerialRegisterWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void SerialRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
     if ( !dev || !dev->data )

@@ -10,7 +10,7 @@ typedef struct ramInfo_s {
     unsigned char disabled_value;
 } ramInfo_t;
 
-static unsigned char GenericRamRead( busDevice_t *dev, unsigned long addr, int final ) {
+static unsigned char GenericRamRead( busDevice_t *dev, busAddress_t addr, int final ) {
     ramInfo_t *ram = dev->data;
 
     /*if ( addr >= ram->len ) {
@@ -24,7 +24,7 @@ static unsigned char GenericRamRead( busDevice_t *dev, unsigned long addr, int f
 }
 
 
-static void GenericRamWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void GenericRamWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     ramInfo_t *ram = dev->data;
     
     ram->bytes[addr] = val;

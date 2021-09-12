@@ -7,8 +7,8 @@
 
 typedef struct busMapping_s {
     char *name;
-    unsigned long addr_start;
-    unsigned long addr_end;
+    busAddress_t addr_start;
+    busAddress_t addr_end;
     busDevice_t* device;
 } busMapping_t;
 
@@ -18,7 +18,7 @@ typedef struct busInfo_s {
     char emptyVal;
 } busInfo_t;
 
-static busMapping_t* GetTargetBusMapping( busInfo_t* bus, unsigned long addr ) {
+static busMapping_t* GetTargetBusMapping( busInfo_t* bus, busAddress_t addr ) {
     int i;
 
     for ( i = 0; i < MAX_MAPPINGS; i++ ) {
@@ -32,7 +32,7 @@ static busMapping_t* GetTargetBusMapping( busInfo_t* bus, unsigned long addr ) {
     return NULL;
 }
 
-static unsigned char GenericBusRead( busDevice_t *dev, unsigned long addr, int final ) {
+static unsigned char GenericBusRead( busDevice_t *dev, busAddress_t addr, int final ) {
     busInfo_t *bus;
     busMapping_t *mapping;
 
@@ -47,7 +47,7 @@ static unsigned char GenericBusRead( busDevice_t *dev, unsigned long addr, int f
 }
 
 
-static void GenericBusWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void GenericBusWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     busInfo_t *bus;
     busMapping_t *mapping;
 
@@ -69,7 +69,7 @@ void GenericBusSetEmptyVal( busDevice_t *dev, unsigned char val ) {
     bus->emptyVal = val;
 }
 
-void GenericBusMapping( busDevice_t *dev, char* name, unsigned long addr_start, unsigned long addr_end, busDevice_t *subdev ) {
+void GenericBusMapping( busDevice_t *dev, char* name, busAddress_t addr_start, busAddress_t addr_end, busDevice_t *subdev ) {
     busInfo_t *bus;
     int i;
 

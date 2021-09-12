@@ -15,7 +15,7 @@ typedef struct romInfo_s {
     int ram_select;
 } romInfo_t;
 
-static unsigned char MBC3RomRead( busDevice_t *dev, unsigned long addr, int final ) {
+static unsigned char MBC3RomRead( busDevice_t *dev, busAddress_t addr, int final ) {
     romInfo_t *rom;
 
     if ( !dev || !dev->data )
@@ -33,7 +33,7 @@ static unsigned char MBC3RomRead( busDevice_t *dev, unsigned long addr, int fina
 }
 
 
-static void MBC3RomWrite( busDevice_t *dev, unsigned long addr, unsigned char val, int final ) {
+static void MBC3RomWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     romInfo_t *rom;
 
     if ( !dev || !dev->data )

@@ -11,6 +11,7 @@ alarmManager_t * AlarmManager( AlarmChangedCallback_t AlarmChangedCallback, void
 
     manager->AlarmChangedCallback = AlarmChangedCallback;
     manager->alarmChangedCallbackData = alarmChangedCallbackData;
+    manager->numAlarms = 0;
 
     return manager;
 }
@@ -22,7 +23,7 @@ alarm_t * AlarmGetNext( alarmManager_t * manager ) {
     if ( !manager )
         return NULL;
     
-    for ( i = 0; i < MAX_ALARMS; i++ ) {
+    for ( i = 0; i < manager->numAlarms; i++ ) {
         alarm_t * alarm = manager->alarms[i];
 
         if ( !next ) {
@@ -68,6 +69,7 @@ void AlarmAdd( alarmManager_t * manager, alarm_t * alarm ) {
     for ( i = 0; i < MAX_ALARMS; i++ ) {
         if ( ! manager->alarms[i] ) {
             manager->alarms[i] = alarm;
+            manager->numAlarms++;
             return;
         }
     }

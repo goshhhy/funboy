@@ -20,6 +20,7 @@ typedef struct alarmManager_s {
     AlarmGetTimePassedCallback_t * AlarmGetTimePassedCallback;
     AlarmGetFrameTimeCallback_t * AlarmGetFrameTimeCallback;
     alarm_t *alarms[32];
+    int numAlarms;
 } alarmManager_t;
 
 alarmManager_t * AlarmManager( AlarmChangedCallback_t AlarmChangedCallback, void * alarmChangedCallbackData );

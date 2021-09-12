@@ -3,7 +3,7 @@
 
 #include "device.h"
 
-int printSteps = 0;
+/* #define BUS_REGISTER_VERBOSE */
 
 typedef struct regInfo_s {
     char* name;
@@ -14,16 +14,24 @@ typedef struct regInfo_s {
 static unsigned char GenericRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
     regInfo_t *reg;
 
+    #ifdef BUS_MAP_PARANOID
     if ( !dev || !dev->data )
         return 0;
+    #endif
+
     reg = dev->data;
 
+    #ifdef BUS_MAP_PARANOID
     if ( addr > reg->len ) {
         fprintf( stderr, "warning: GenericRegisterRead: address out of bounds\n" );
         return 0;
     }
-    if ( printSteps )
-        printf( "read register [0x%08lx]%s:%08x\n", addr, reg->name, *reg->data  );
+    #endif
+
+    #ifdef BUS_REGISTER_VERBOSE
+    printf( "read register [0x%08lx]%s:%08x\n", addr, reg->name, *reg->data  );
+    #endif
+
     if ( reg->data ) {
         return reg->data[addr];
     }
@@ -34,17 +42,24 @@ static unsigned char GenericRegisterRead( busDevice_t *dev, busAddress_t addr, i
 static void GenericRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
+    #ifdef BUS_MAP_PARANOID
     if ( !dev || !dev->data )
         return;
+    #endif
+
     reg = dev->data;
 
+    #ifdef BUS_MAP_PARANOID
     if ( addr > reg->len ) {
         fprintf( stderr, "warning: GenericRegisterWrite: address out of bounds\n" );
         return;
     }
+    #endif
 
-    if ( printSteps )
-        fprintf( stdout, "write register [0x%08lx]%s <- %02x (byte %lu)\n", addr, reg->name, val, addr );
+    #ifdef BUS_REGISTER_VERBOSE
+    fprintf( stdout, "write register [0x%08lx]%s <- %02x (byte %lu)\n", addr, reg->name, val, addr );
+    #endif
+
     if ( reg->data ) {
         reg->data[addr] = val;
     }

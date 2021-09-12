@@ -12,8 +12,11 @@ typedef struct romInfo_s {
 static unsigned char GenericRomRead( busDevice_t *dev, busAddress_t addr, int final ) {
     romInfo_t *rom;
 
+    #ifdef BUS_MAP_PARANOID
     if ( !dev || !dev->data )
         return 0;
+    #endif
+
     rom = dev->data;
 
     if ( addr > rom->len ) {
@@ -27,8 +30,11 @@ static unsigned char GenericRomRead( busDevice_t *dev, busAddress_t addr, int fi
 static void GenericRomWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     romInfo_t *rom;
 
+    #ifdef BUS_MAP_PARANOID
     if ( !dev || !dev->data )
         return;
+    #endif
+
     rom = dev->data;
 
     if ( addr > rom->len ) {
@@ -43,8 +49,11 @@ static void GenericRomWrite( busDevice_t *dev, busAddress_t addr, unsigned char 
 char* GenericRomBytesPtr( busDevice_t *dev ) {
     romInfo_t *rom;
 
+    #ifdef BUS_MAP_PARANOID
     if ( !dev || !dev->data )
         return NULL;
+    #endif
+
     rom = dev->data;
 
     return rom->bytes;

@@ -6,6 +6,8 @@
 /* uncomment for faster, but more memory intensive, 16-bit bus mapping method */
 #define BUS_MAP_FAST16
 
+/* #define BUS_MAP_PARANOID */
+
 #ifdef BUS_SIZE_32
 typedef unsigned long busAddress_t;
 #else

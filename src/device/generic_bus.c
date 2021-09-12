@@ -27,8 +27,6 @@ typedef struct busInfo_s {
 
 #ifdef BUS_MAP_FAST16
 static busMapping_t* GetTargetBusMapping( busInfo_t* bus, busAddress_t addr ) {
-    int i;
-
     return bus->mappings[addr];
 }
 #else
@@ -51,8 +49,11 @@ static unsigned char GenericBusRead( busDevice_t *dev, busAddress_t addr, int fi
     busInfo_t *bus;
     busMapping_t *mapping;
 
+    #ifdef BUS_MAP_PARANOID
     if ( !dev || !dev->data )
         return 0;
+    #endif
+
     bus = dev->data;
 
     mapping = GetTargetBusMapping( bus, addr );
@@ -66,8 +67,11 @@ static void GenericBusWrite( busDevice_t *dev, busAddress_t addr, unsigned char 
     busInfo_t *bus;
     busMapping_t *mapping;
 
+    #ifdef BUS_MAP_PARANOID
     if ( !dev || !dev->data )
         return;
+    #endif
+
     bus = dev->data;
     mapping = GetTargetBusMapping( bus, addr );
     if ( !mapping || mapping->device == dev )
@@ -80,6 +84,7 @@ void GenericBusSetEmptyVal( busDevice_t *dev, unsigned char val ) {
 
     if ( !dev || !dev->data )
         return;
+
     bus = dev->data;
     bus->emptyVal = val;
 }

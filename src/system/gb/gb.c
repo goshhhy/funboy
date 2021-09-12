@@ -5,6 +5,8 @@
 #include "device.h"
 #include "sm83.h"
 #include "io.h"
+#include "alarms.h"
+#include "gb.h"
 
 #include "timer.h"
 #include "ppu.h"
@@ -13,8 +15,6 @@
 #include "serial_log.h"
 
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
-
-#define GB_CLOCK_SPEED 4194304
 
 void MapGbRegs( busDevice_t* gbbus );
 busDevice_t *LoadRom( char* path );
@@ -103,9 +103,29 @@ busDevice_t *LoadRom( char* path ) {
     return rom;
 }
 
+static void AlarmChangedCallback(void * data) {
+    int * alarmChanged = data;
+    
+    *alarmChanged = 1;
+}
+
+static int AlarmGetTimePassedCallback(void * data) {
+    int * timePassed = data;
+    
+    return *timePassed;
+}
+
+static unsigned long AlarmGetFrameTimeCallback(void * data) {
+    int * frameTime = data;
+    
+    return *frameTime;
+}
+
 int gb_main( char *rompath ) {
-    int framestep = 0;
+    unsigned long framestep = 0;
+    int substep = 0;
     int go = 1;
+    int alarmChanged = 0;
     busDevice_t *gbbus;
     busDevice_t* ram;
     busDevice_t* zpage;
@@ -117,8 +137,16 @@ int gb_main( char *rompath ) {
     sm83_t *cpu;
     gbTimer_t *timer;
     gbPpu_t *ppu;
+    alarmManager_t *alarmManager;
 
     printf( "funboy! v%u.%u.%u%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_DIST );
+
+    alarmManager = AlarmManager( AlarmChangedCallback, &alarmChanged );
+    alarmManager->AlarmGetTimePassedCallback = AlarmGetTimePassedCallback;
+    alarmManager->alarmGetTimePassedCallbackData = &substep;
+    alarmManager->AlarmGetFrameTimeCallback = AlarmGetFrameTimeCallback;
+    alarmManager->alarmGetFrameTimeCallbackData = &framestep;
+
 
     gbbus = GenericBus( "gb" );
 
@@ -144,18 +172,25 @@ int gb_main( char *rompath ) {
     GenericBusMapping( gbbus, "zpage",   0xff80, 0xfffe, zpage );
 
     cpu = Sm83( gbbus );
-    timer = GbTimer( gbbus, cpu );
+    timer = GbTimer( gbbus, cpu, alarmManager );
     GbInput( gbbus, cpu );
 
     /* init ppu last, since it sets up the benchmark timer */
     ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
     IO_SetEmuName( "funboy!" );
-    
+
     while ( go ) {
-        for ( framestep = 0; framestep < GB_CLOCK_SPEED / 60; framestep++ ) {
-            cpu->Step( cpu );
-            timer->Step( timer );
-            ppu->Step( ppu );
+        
+        for ( framestep = 0; framestep < GB_CLOCK_SPEED / 59.97; ) {
+            alarmChanged = 0;
+            alarm_t * next = AlarmGetNext( alarmManager );
+            int target = ( next->when > 0 ) ? next->when : GB_CLOCK_SPEED;
+            for ( substep = 0; ( substep < target ) && ( alarmChanged == 0 ); substep++ ) {
+                cpu->Step( cpu );
+                ppu->Step( ppu );
+            }
+            AlarmTimePassed( alarmManager, substep, 1 );
+            framestep += substep;
         }
         go = IO_Update();
     }

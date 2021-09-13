@@ -184,7 +184,7 @@ int gb_main( char *rompath ) {
         for ( framestep = 0; framestep < GB_CLOCK_SPEED / 59.97; ) {
             alarmChanged = 0;
             alarm_t * next = AlarmGetNext( alarmManager );
-            int target = ( next->when > 0 ) ? next->when : GB_CLOCK_SPEED;
+            int target = ( next->when > 0 ) ? next->when : GB_CLOCK_SPEED / 59.97;
             for ( substep = 0; ( substep < target ) && ( alarmChanged == 0 ); substep++ ) {
                 cpu->Step( cpu );
                 ppu->Step( ppu );

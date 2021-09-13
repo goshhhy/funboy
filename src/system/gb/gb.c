@@ -180,8 +180,7 @@ int gb_main( char *rompath ) {
     IO_SetEmuName( "funboy!" );
 
     while ( go ) {
-        
-        for ( framestep = 0; framestep < GB_CLOCK_SPEED / 59.97; ) {
+        for ( framestep = 0; framestep < (GB_CLOCK_SPEED / 59.97) - 1; ) {
             alarmChanged = 0;
             alarm_t * next = AlarmGetNext( alarmManager );
             int target = ( next->when > 0 ) ? next->when : GB_CLOCK_SPEED / 59.97;

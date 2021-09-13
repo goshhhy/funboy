@@ -30,3 +30,4 @@ void GenericBusMapping( busDevice_t *dev, char* name, busAddress_t addr_start, b
 void GenericBusSetEmptyVal( busDevice_t *dev, unsigned char val );
 busDevice_t *GenericRegister( char *name, unsigned char *data, size_t len, unsigned char (*Read8)( struct busDevice_s* self, busAddress_t addr, int final ),
                                     void (*Write8)( struct busDevice_s* self, busAddress_t addr, unsigned char val, int final ) );
+void GenericRegisterReadOnly( busDevice_t *dev, busAddress_t addr, unsigned char val, int final );

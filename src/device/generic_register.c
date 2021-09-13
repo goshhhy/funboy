@@ -38,7 +38,6 @@ static unsigned char GenericRegisterRead( busDevice_t *dev, busAddress_t addr, i
     return 0;
 }
 
-
 static void GenericRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
 
@@ -63,6 +62,10 @@ static void GenericRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
     if ( reg->data ) {
         reg->data[addr] = val;
     }
+}
+
+void GenericRegisterReadOnly( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
+    printf("write to read-only register\n");
 }
 
 unsigned char *GenericRegisterdataPtr( busDevice_t *dev ) {

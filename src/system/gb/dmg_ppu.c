@@ -64,12 +64,12 @@ static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
 
     set_enabled = ( ( lcdc & 0x80 ) != 0 );
     if ( set_enabled ) {
-        ;; /* fprintf( stderr, "lcd enabled\n" ); */
+        ;; /* printf( "lcd enabled\n" ); */
     } else {
+        /* printf( "lcd disabled\n" ); */
         if ( enabled && ly < 144 ) {
             fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
         } else {
-            ;; /* fprintf( stderr, "lcd disabled\n" ); */
             dotClock = dotDelay = dotDelayTotal = 0;
         }
         for ( y = 0; y < 144; y++ ) {
@@ -369,7 +369,7 @@ static void Step( gbPpu_t *self ) {
     }
 
     dotClock++;
-    if ( dotClock > 376 ) {
+    if ( dotClock > 455 ) {
         dotClock = 0;
         ly++;
         if ( ly > 153 ) {
@@ -426,7 +426,7 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     GenericBusMapping( bus, "LCDStat", 0xFF41, 0xFF41, GenericRegister( "LCDStat", &lcdStat, 1, NULL, NULL ) );
     GenericBusMapping( bus, "SCY", 0xFF42, 0xFF42, GenericRegister( "SCY", &scy, 1, NULL, NULL ) );
     GenericBusMapping( bus, "SCX", 0xFF43, 0xFF43, GenericRegister( "SCX", &scx, 1, NULL, NULL ) );
-    GenericBusMapping( bus, "LY", 0xFF44, 0xFF44, GenericRegister( "LY", &ly, 1, NULL, NULL ) );
+    GenericBusMapping( bus, "LY", 0xFF44, 0xFF44, GenericRegister( "LY", &ly, 1, NULL, GenericRegisterReadOnly ) );
     GenericBusMapping( bus, "LYC", 0xFF45, 0xFF45, GenericRegister( "LYC", &lyc, 1, NULL, NULL ) );
     GenericBusMapping( bus, "OamDma", 0xFF46, 0xFF46, GenericRegister( "OamDma", NULL, 1, NULL, DmaRegisterWrite ) );
     GenericBusMapping( bus, "BGP", 0xFF47, 0xFF47, GenericRegister( "BGP", &bgPal, 1, NULL, NULL ) );

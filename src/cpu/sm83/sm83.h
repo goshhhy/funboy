@@ -10,6 +10,7 @@ typedef struct sm83_s {
     busDevice_t* bus;
     void (*Reset)( struct sm83_s *self );
     void (*Step)( struct sm83_s *self );
+    unsigned long (*StepMultiple)( struct sm83_s *self, unsigned long count, unsigned long *cycleProgress, int * stopFlag );
 	void (*Interrupt)( struct sm83_s *cpu, unsigned char inum );
 } sm83_t;
 

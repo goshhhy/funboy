@@ -267,6 +267,63 @@ static void Step( sm83_t *cpu ) {
     cpu->fetched = 0;
 }
 
+static unsigned long StepMultiple( struct sm83_s *cpu, unsigned long tcycles, unsigned long * i, int * stopFlag ) {
+    unsigned char active;
+
+    for (*i = 0; ( *i < tcycles ) && (!(*stopFlag)); ) {
+        if ( cpu->fetched == 0 ) {
+            cpu->op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
+            cpu->timetarget += timings[cpu->op];
+            cpu->fetched = 1;
+        }
+
+        if ( cpu->timetarget > ( tcycles - *i ) ) {
+            cpu->timetarget -= tcycles - *i;
+            break;
+        }
+
+        *i += cpu->timetarget;
+        cpu->timetarget = 0;
+
+        if ( ! cpu->halted ) {
+            ops[cpu->op]( cpu );
+            cpu->pc++;
+        }
+
+        /* run interrupts if applicable */
+        if ( ( cpu->ifl == 1 ) || ( cpu->halted ) ) {
+            active = ( read8( cpu, 0xffff, 0 ) & read8( cpu, 0xff0f, 0 ) ) & 0x1F; 
+            if ( active ) {
+                /*printf("running interrupt\n");*/
+                pushw( cpu, cpu->pc );
+                cpu->halted = 0;
+                cpu->ifl = 0;
+                if ( active & 0x1 ) {
+                    write8( cpu, 0xff0f, active & 0x1E, 1 );
+                    cpu->pc = 0x40;
+                } else if ( active & 0x2 ) {
+                    write8( cpu, 0xff0f, active & 0x1D, 1 );
+                    cpu->pc = 0x48;
+                } else if ( active & 0x4 ) {
+                    write8( cpu, 0xff0f, active & 0x1B, 1 );
+                    cpu->pc = 0x50;
+                } else if ( active & 0x8 ) {
+                    write8( cpu, 0xff0f, active & 0x17, 1 );
+                    cpu->pc = 0x58;
+                } else if ( active & 0x10 ) {
+                    write8( cpu, 0xff0f, active & 0x0F, 1 );
+                    cpu->pc = 0x60;
+                }
+                cpu->timetarget += 0;
+            }
+        }
+        cpu->ifl = cpu->ifl_next;
+        cpu->fetched = 0;
+    }
+
+    return *i;
+}
+
 static void Interrupt( sm83_t *cpu, unsigned char inum ) {
         /*fprintf( stderr, "interrupt %hhi set with interrupts %i, ie %hhi\n", inum, cpu->ifl, read8( cpu, 0xffff, 0 ) );*/
         write8( cpu, 0xff0f, read8( cpu, 0xff0f, 0 ) | (0x1 << inum), 0 );
@@ -290,6 +347,7 @@ sm83_t *Sm83( busDevice_t *bus ) {
 	cpu->bus = bus;
 	cpu->Reset = Reset;
 	cpu->Step = Step;
+    cpu->StepMultiple = StepMultiple;
     cpu->Interrupt = Interrupt;
 	Reset( cpu );
     printf( "sm83 cpu created\n" );

@@ -65,7 +65,7 @@ void MapGbRegs( busDevice_t* gbbus ) {
 }
 
 busDevice_t *LoadRom( char* path ) {
-    char romName[17] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
+    unsigned char romName[17] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     busDevice_t* rom = GenericRom( path, 512 );
     unsigned char mapperType;
     size_t romSize;
@@ -78,7 +78,7 @@ busDevice_t *LoadRom( char* path ) {
         romName[15] = '\0';        
     } 
     printf( "Loading rom %s\n", romName );
-    IO_SetTitle( romName );
+    IO_SetTitle( (const char*)romName );
 
     mapperType = rom->Read8( rom, 0x147, 0 );
     romSize = ( 32 * 1024 ) << rom->Read8( rom, 0x148, 0 );
@@ -123,7 +123,7 @@ static unsigned long AlarmGetFrameTimeCallback(void * data) {
 
 int gb_main( char *rompath ) {
     unsigned long framestep = 0;
-    int substep = 0;
+    unsigned long substep = 0;
     int go = 1;
     int alarmChanged = 0;
     busDevice_t *gbbus;
@@ -150,15 +150,12 @@ int gb_main( char *rompath ) {
 
     gbbus = GenericBus( "gb" );
 
-    ram = GenericRam( 0x2000 );
-    zpage = GenericRam( 0x80 );
-    cram = GenericRam( 0x1800 );
-    bgram = GenericRam( 0x800 );
-    oam = GenericRam( 0xa0 );
-    cartram = GenericRam( 0x2000 );
-
-    MapGbRegs( gbbus );
-    SerialToStderr( gbbus );
+    ram = GenericRam( 0x2000, "ram" );
+    zpage = GenericRam( 0x80, "zpage" );
+    cram = GenericRam( 0x1800, "cram" );
+    bgram = GenericRam( 0x800, "bgram" );
+    oam = GenericRam( 0xa0, "oam" );
+    cartram = GenericRam( 0x2000, "cartram" );
 
     rom = LoadRom( rompath );
 
@@ -170,6 +167,9 @@ int gb_main( char *rompath ) {
     GenericBusMapping( gbbus, "echo",    0xe000, 0xfdff, ram );
     GenericBusMapping( gbbus, "oam",     0xfe00, 0xfe9f, oam );
     GenericBusMapping( gbbus, "zpage",   0xff80, 0xfffe, zpage );
+
+    MapGbRegs( gbbus );
+    SerialToStderr( gbbus );
 
     cpu = Sm83( gbbus );
     timer = GbTimer( gbbus, cpu, alarmManager );
@@ -184,9 +184,7 @@ int gb_main( char *rompath ) {
             alarmChanged = 0;
             alarm_t * next = AlarmGetNext( alarmManager );
             int target = ( next->when > 0 ) ? next->when : GB_CLOCK_SPEED / 59.97;
-            for ( substep = 0; ( substep < target ) && ( alarmChanged == 0 ); substep++ ) {
-                cpu->Step( cpu );
-            }
+            cpu->StepMultiple( cpu, target, &substep, &alarmChanged );
             AlarmTimePassed( alarmManager, substep, 1 );
             framestep += substep;
         }

@@ -176,7 +176,7 @@ int gb_main( char *rompath ) {
     GbInput( gbbus, cpu );
 
     /* init ppu last, since it sets up the benchmark timer */
-    ppu = GbPpu( gbbus, cpu, bgram, cram, oam );
+    ppu = GbPpu( gbbus, cpu, bgram, cram, oam, alarmManager );
     IO_SetEmuName( "funboy!" );
 
     while ( go ) {

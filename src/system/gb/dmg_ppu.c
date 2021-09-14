@@ -6,6 +6,7 @@
 
 #include "version.h"
 #include "device.h"
+#include "alarms.h"
 #include "sm83.h"
 #include "io.h"
 #include "ppu.h"
@@ -40,10 +41,37 @@ typedef struct regInfo_s {
     unsigned long* data;
 } regInfo_t;
 
+static void DmaAlarmCallback( void * data ) {
+    gbPpu_t *self = data;
 
-static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
+    unsigned char val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, 0 );
+    self->oamBytes[dmaAddress & 0x00ff] = val;
+    dmaAddress++;
+    if ( ( dmaAddress & 0x00ff ) > 0x9f ) {
+        if ( ( lcdStat & 0x20 ) != 0 ) {
+            self->cpu->Interrupt( self->cpu, 1 );
+        }
+        dmaTransferActive = 0;
+    } else {
+        self->dmaAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 2;
+        self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
+    }
+}
+
+static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, char val, int final ) {
+    regInfo_t * reg;
+    gbPpu_t * self;
+
+    if ( !dev || !dev->data )
+        return;
+    reg = dev->data;
+    self = reg->data;
+
     dmaTransferActive = 1;
     dmaAddress = (unsigned short)val << 8;
+
+    self->dmaAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 2;
+    self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
 }
 
 static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
@@ -339,6 +367,7 @@ static void Step( gbPpu_t *self ) {
         return;
     }
 
+    /*
     if ( dmaTransferActive ) {
         unsigned char val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, 0 );
         self->oamBytes[dmaAddress & 0x00ff] = val;
@@ -350,6 +379,7 @@ static void Step( gbPpu_t *self ) {
             }
         }
     }
+    */
 
     if ( !enabled )
         return;
@@ -394,7 +424,7 @@ static void Step( gbPpu_t *self ) {
     }
 }
 
-gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *cRam, busDevice_t *oam ) {
+gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *cRam, busDevice_t *oam, alarmManager_t * alarmManager ) {
     int i;
     gbPpu_t *ppu = malloc( sizeof( gbPpu_t ) );
     ppu->Step = Step;
@@ -402,6 +432,14 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     ppu->bgRam = bgRam;
     ppu->cRam = cRam;
     ppu->oam = oam;
+
+    ppu->alarmManager = alarmManager;
+    ppu->dmaAlarm.name = "dmaAlarm";
+    ppu->dmaAlarm.when = -1;
+    ppu->dmaAlarm.Callback = DmaAlarmCallback;
+    ppu->dmaAlarm.callbackData = ppu;
+
+    AlarmAdd( alarmManager, &ppu->dmaAlarm );
 
     /* the bus abstraction is useful from the cpu perspective, but here we know exactly what we're accessing
     so it just slows us down. bypassing it here provides a massive speedup. without this, RenderSprites ends
@@ -428,7 +466,7 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     GenericBusMapping( bus, "SCX", 0xFF43, 0xFF43, GenericRegister( "SCX", &scx, 1, NULL, NULL ) );
     GenericBusMapping( bus, "LY", 0xFF44, 0xFF44, GenericRegister( "LY", &ly, 1, NULL, GenericRegisterReadOnly ) );
     GenericBusMapping( bus, "LYC", 0xFF45, 0xFF45, GenericRegister( "LYC", &lyc, 1, NULL, NULL ) );
-    GenericBusMapping( bus, "OamDma", 0xFF46, 0xFF46, GenericRegister( "OamDma", NULL, 1, NULL, DmaRegisterWrite ) );
+    GenericBusMapping( bus, "OamDma", 0xFF46, 0xFF46, GenericRegister( "OamDma", ppu, 1, NULL, DmaRegisterWrite ) );
     GenericBusMapping( bus, "BGP", 0xFF47, 0xFF47, GenericRegister( "BGP", &bgPal, 1, NULL, NULL ) );
     GenericBusMapping( bus, "OBP0", 0xFF48, 0xFF48, GenericRegister( "OBP0", &objPal0, 1, NULL, NULL ) );
     GenericBusMapping( bus, "OBP1", 0xFF49, 0xFF49, GenericRegister( "OBP1", &objPal1, 1, NULL, NULL ) );

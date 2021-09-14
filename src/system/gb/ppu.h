@@ -26,7 +26,7 @@ typedef struct gbPpu_s {
 
     /* alarms */
     alarmManager_t * alarmManager;
-    alarm_t dmaAlarm;
+    alarm_t dmaAlarm, hsyncAlarm, vsyncAlarm;
 
     void (*Step)( struct gbPpu_s *self );
 } gbPpu_t;

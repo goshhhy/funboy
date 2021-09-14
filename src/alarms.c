@@ -22,23 +22,18 @@ alarm_t * AlarmGetNext( alarmManager_t * manager ) {
     
     if ( !manager )
         return NULL;
+
+    next = manager->alarms[0];
     
-    for ( i = 0; i < manager->numAlarms; i++ ) {
+    for ( i = 1; i < manager->numAlarms; i++ ) {
         alarm_t * alarm = manager->alarms[i];
 
-        if ( !next ) {
-            if ( alarm ) {
+        if ( ( alarm->when > 0 ) ) {
+            if ( ( alarm->when < next->when ) || 
+                next->when < 0 ) {
                 next = alarm;
+                continue;
             }
-            continue;
-        }
-
-        if ( !alarm )
-            continue;
-
-        if ( ( alarm->when > 0 ) && ( alarm->when < next->when ) ) {
-            next = alarm;
-            continue;
         }
     }
 

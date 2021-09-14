@@ -49,7 +49,6 @@ void AlarmTimePassed( alarmManager_t * manager, int howmuch, int runCallbacks ) 
         if ( alarm && ( alarm->when >= 0 ) ) {
             alarm->when = alarm->when - howmuch;
             if ( alarm->when < 1 ) {
-                alarm->when = -1;
                 if ( runCallbacks ) {
                     alarm->Callback( alarm->callbackData );
                 }

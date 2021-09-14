@@ -77,7 +77,10 @@ static void SetNextTimerAlarm( gbTimer_t *self ) {
         case 3: cycles = GB_CLOCK_SPEED / 16384; break;
     }
 
-    cycles += self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData);
+
+    if ( self->alarm.when != 0 ) {
+        cycles += self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData);
+    }
     self->alarm.when = cycles;
     
     self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
@@ -120,7 +123,6 @@ static void AlarmTimerCallback( void * data ) {
     gbTimer_t * self = data;
 
     if ( enabled && overflowed ) {
-        printf( "timer interrupt!\n" );
         self->cpu->Interrupt( self->cpu, 2 );
         countReg = modulo;
         overflowed = 0;

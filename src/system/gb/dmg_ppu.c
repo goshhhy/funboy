@@ -21,7 +21,7 @@ static unsigned char lcdStat;
 static unsigned char scx, scy, wx, wy;
 static unsigned char ly, lyc;
 static unsigned char bgPal, objPal0, objPal1;
-static short dotClock, dotDelay, dotDelayTotal;
+static short dotClock;
 static int dmaTransferActive = 0;
 static unsigned short dmaAddress;
 static unsigned char windowLines;
@@ -41,6 +41,8 @@ typedef struct regInfo_s {
     unsigned long* data;
 } regInfo_t;
 
+static void RenderLine( gbPpu_t *self );
+
 static void DmaAlarmCallback( void * data ) {
     gbPpu_t *self = data;
 
@@ -53,9 +55,56 @@ static void DmaAlarmCallback( void * data ) {
         }
         dmaTransferActive = 0;
     } else {
-        self->dmaAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 2;
+        self->dmaAlarm.when += 4;
         self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
     }
+}
+
+static void HsyncAlarmCallback( void * data ) {
+    gbPpu_t *self = data;
+
+    if ( ly < 144 ) {
+        RenderLine( self );
+        if ( ( lcdStat & 0x08 ) != 0 ) {
+            self->cpu->Interrupt( self->cpu, 1 );
+        }
+        lcdStat |= 0x00;
+    } else {
+        lcdStat |= 0x01;
+    }
+
+    self->hsyncAlarm.when += 456;
+    self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
+}
+
+static void VsyncAlarmCallback( void * data ) {
+    gbPpu_t *self = data;
+
+    ly++;
+    if ( ly > 153 ) {
+        ly = 0;
+    }
+    if ( ly < 144 ) {
+        lcdStat |= 0x02;
+    } 
+    if ( ly == 144 ) {
+        self->cpu->Interrupt( self->cpu, 0 );
+        windowLines = 0;
+        if ( ( lcdStat & 0x10 ) != 0 ) {
+            self->cpu->Interrupt( self->cpu, 1 );
+        }
+    }
+    if ( ly == lyc )  {
+        if ( ( lcdStat & 0x40 ) != 0 ) {
+            self->cpu->Interrupt( self->cpu, 1 );
+        }
+        lcdStat = lcdStat | 0x04;
+    } else {
+        lcdStat = lcdStat & 0xfb;
+    }
+
+    self->vsyncAlarm.when += 456;
+    self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
 }
 
 static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, char val, int final ) {
@@ -76,12 +125,14 @@ static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, char val, int
 
 static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t *reg;
+    gbPpu_t *self;
     int x, y;
     int set_enabled;
 
     if ( !dev || !dev->data )
         return;
     reg = dev->data;
+    self = reg->data;
 
     if ( addr > reg->len ) {
         fprintf( stderr, "warning: ControlRegisterWrite: address out of bounds\n" );
@@ -93,12 +144,13 @@ static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
     set_enabled = ( ( lcdc & 0x80 ) != 0 );
     if ( set_enabled ) {
         ;; /* printf( "lcd enabled\n" ); */
+        self->hsyncAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 160;
+        self->vsyncAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 456;
+        self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
     } else {
         /* printf( "lcd disabled\n" ); */
         if ( enabled && ly < 144 ) {
             fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
-        } else {
-            dotClock = dotDelay = dotDelayTotal = 0;
         }
         for ( y = 0; y < 144; y++ ) {
             for ( x = 0; x < 160; x++ ) {
@@ -109,6 +161,10 @@ static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
         ly = 0;
     }
     enabled = set_enabled;
+}
+
+static unsigned char ControlRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
+    return lcdc;
 }
 
 static void RenderBackground( gbPpu_t *self, unsigned char *bgPrio, unsigned char *shade, unsigned short tileDataBase  ) {
@@ -360,68 +416,7 @@ static void RenderLine( gbPpu_t *self ) {
 }
 
 static void Step( gbPpu_t *self ) {
-    lcdStat = lcdStat & 0xfc;
-
-    if ( dotDelay > 0 ) {
-        dotDelay--;
-        return;
-    }
-
-    /*
-    if ( dmaTransferActive ) {
-        unsigned char val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, 0 );
-        self->oamBytes[dmaAddress & 0x00ff] = val;
-        dmaAddress++;
-        if ( ( dmaAddress & 0x00ff ) > 0x9f ) {
-            dmaTransferActive = 0;
-            if ( ( lcdStat & 0x20 ) != 0 ) {
-                self->cpu->Interrupt( self->cpu, 1 );
-            }
-        }
-    }
-    */
-
-    if ( !enabled )
-        return;
-
-    if ( ( dotClock < 160 ) && ( ly < 144 ) ) {
-        lcdStat |= 0x03;
-    } else if ( ly < 144 ) {
-        if ( dotClock == 160 ) {
-            RenderLine( self );
-            if ( ( lcdStat & 0x08 ) != 0 ) {
-                self->cpu->Interrupt( self->cpu, 1 );
-            }
-        }
-        lcdStat |= 0x00;
-    } else {
-        lcdStat |= 0x01;
-    }
-
-    dotClock++;
-    if ( dotClock > 455 ) {
-        dotClock = 0;
-        ly++;
-        if ( ly > 153 ) {
-            ly = 0;
-        }
-        if ( ly == 144 ) {
-            self->cpu->Interrupt( self->cpu, 0 );
-            windowLines = 0;
-            if ( ( lcdStat & 0x10 ) != 0 ) {
-                self->cpu->Interrupt( self->cpu, 1 );
-            }
-        }
-        if ( ly == lyc )  {
-            if ( ( lcdStat & 0x40 ) != 0 ) {
-                self->cpu->Interrupt( self->cpu, 1 );
-            }
-            lcdStat = lcdStat | 0x04;
-        } else {
-            lcdStat = lcdStat & 0xfb;
-        }
-
-    }
+    (void)self;
 }
 
 gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *cRam, busDevice_t *oam, alarmManager_t * alarmManager ) {
@@ -434,13 +429,25 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     ppu->oam = oam;
 
     ppu->alarmManager = alarmManager;
+
     ppu->dmaAlarm.name = "dmaAlarm";
     ppu->dmaAlarm.when = -1;
     ppu->dmaAlarm.Callback = DmaAlarmCallback;
     ppu->dmaAlarm.callbackData = ppu;
 
-    AlarmAdd( alarmManager, &ppu->dmaAlarm );
+    ppu->hsyncAlarm.name = "hsyncAlarm";
+    ppu->hsyncAlarm.when = 160;
+    ppu->hsyncAlarm.Callback = HsyncAlarmCallback;
+    ppu->hsyncAlarm.callbackData = ppu;
 
+    ppu->vsyncAlarm.name = "vsyncAlarm";
+    ppu->vsyncAlarm.when = 456;
+    ppu->vsyncAlarm.Callback = VsyncAlarmCallback;
+    ppu->vsyncAlarm.callbackData = ppu;
+
+    AlarmAdd( alarmManager, &ppu->dmaAlarm );
+    AlarmAdd( alarmManager, &ppu->hsyncAlarm );
+    AlarmAdd( alarmManager, &ppu->vsyncAlarm );
     /* the bus abstraction is useful from the cpu perspective, but here we know exactly what we're accessing
     so it just slows us down. bypassing it here provides a massive speedup. without this, RenderSprites ends
     up taking upwards of 40% of the total execution time of the emulator */
@@ -460,7 +467,7 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     scy = scx = wy = wx = 0;
     bgPal = objPal0 = objPal1 = 0;
 
-    GenericBusMapping( bus, "LCDC", 0xFF40, 0xFF40, GenericRegister( "LCDC", &lcdc, 1, NULL, ControlRegisterWrite ) );
+    GenericBusMapping( bus, "LCDC", 0xFF40, 0xFF40, GenericRegister( "LCDC", ppu, 1, ControlRegisterRead, ControlRegisterWrite ) );
     GenericBusMapping( bus, "LCDStat", 0xFF41, 0xFF41, GenericRegister( "LCDStat", &lcdStat, 1, NULL, NULL ) );
     GenericBusMapping( bus, "SCY", 0xFF42, 0xFF42, GenericRegister( "SCY", &scy, 1, NULL, NULL ) );
     GenericBusMapping( bus, "SCX", 0xFF43, 0xFF43, GenericRegister( "SCX", &scx, 1, NULL, NULL ) );

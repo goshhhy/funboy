@@ -183,8 +183,10 @@ int gb_main( char *rompath ) {
         for ( framestep = 0; framestep < (GB_CLOCK_SPEED / 59.97) - 1; ) {
             alarmChanged = 0;
             alarm_t * next = AlarmGetNext( alarmManager );
-            int target = ( next->when > 0 ) ? next->when : GB_CLOCK_SPEED / 59.97;
+            int target = ( next && ( next->when > 0 ) ) ? next->when : GB_CLOCK_SPEED / 59.97;
+            
             cpu->StepMultiple( cpu, target, &substep, &alarmChanged );
+            
             AlarmTimePassed( alarmManager, substep, 1 );
             framestep += substep;
         }

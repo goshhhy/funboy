@@ -40,7 +40,7 @@ static busMapping_t* GetTargetBusMapping( busInfo_t* bus, busAddress_t addr ) {
             }
         }
     }
-    printf( "bus %s: no device found for access (offset %08lx)\n", bus->name, addr );
+    printf( "bus %s: no device found for access (offset %04x)\n", bus->name, addr );
     return NULL;
 }
 #endif
@@ -57,8 +57,10 @@ static unsigned char GenericBusRead( busDevice_t *dev, busAddress_t addr, int fi
     bus = dev->data;
 
     mapping = GetTargetBusMapping( bus, addr );
+
     if ( !mapping || mapping->device == dev )
         return bus->emptyVal;
+
     return mapping->device->Read8( mapping->device, addr - mapping->addr_start, final );
 }
 

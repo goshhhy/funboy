@@ -5,12 +5,6 @@
 
 /* #define BUS_REGISTER_VERBOSE */
 
-typedef struct regInfo_s {
-    char* name;
-    size_t len;
-    unsigned char* data;
-} regInfo_t;
-
 static unsigned char GenericRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
     regInfo_t *reg;
 
@@ -33,7 +27,7 @@ static unsigned char GenericRegisterRead( busDevice_t *dev, busAddress_t addr, i
     #endif
 
     if ( reg->data ) {
-        return reg->data[addr];
+        return ((unsigned char*)reg->data)[addr];
     }
     return 0;
 }
@@ -60,7 +54,7 @@ static void GenericRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
     #endif
 
     if ( reg->data ) {
-        reg->data[addr] = val;
+        ((unsigned char*)reg->data)[addr] = val;
     }
 }
 
@@ -78,7 +72,7 @@ unsigned char *GenericRegisterdataPtr( busDevice_t *dev ) {
     return reg->data;
 }
 
-busDevice_t *GenericRegister( char *name, unsigned char *data, size_t len, unsigned char (*Read8)( struct busDevice_s* self, busAddress_t addr, int final ),
+busDevice_t *GenericRegister( char *name, void *data, size_t len, unsigned char (*Read8)( struct busDevice_s* self, busAddress_t addr, int final ),
                                     void (*Write8)( struct busDevice_s* self, busAddress_t addr, unsigned char val, int final ) ) {
     busDevice_t *dev;
     regInfo_t *reg;

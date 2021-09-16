@@ -20,7 +20,7 @@ static unsigned char GenericRomRead( busDevice_t *dev, busAddress_t addr, int fi
     rom = dev->data;
 
     if ( addr > rom->len ) {
-        fprintf( stderr, "warning: GenericRomRead: address out of bounds [%s:%04lx]\n", rom->name, addr );
+        fprintf( stderr, "warning: GenericRomRead: address out of bounds [%s:%04x]\n", rom->name, addr );
         return 0;
     }
     return rom->bytes[addr];
@@ -42,7 +42,7 @@ static void GenericRomWrite( busDevice_t *dev, busAddress_t addr, unsigned char 
         exit(1);
         return;
     }
-    fprintf( stderr, "warning: discarded write to rom area [0x%04lx]\n", addr );
+    fprintf( stderr, "warning: discarded write to rom area [0x%04x]\n", addr );
     /* exit(1); */
 }
 

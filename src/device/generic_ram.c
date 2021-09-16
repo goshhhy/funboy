@@ -3,23 +3,16 @@
 
 #include "device.h"
 
-typedef struct ramInfo_s {
-    size_t len;
-    char* bytes;
-    int disabled;
-    unsigned char disabled_value;
-} ramInfo_t;
-
 static unsigned char GenericRamRead( busDevice_t *dev, busAddress_t addr, int final ) {
     ramInfo_t *ram = dev->data;
 
-    /*if ( addr >= ram->len ) {
-        printf("warning: GenericRamRead: address out of bounds (access to %04lx in a block of size %04lx)\n", addr, ram->len );
+    if ( addr >= ram->len ) {
+        printf("%s: warning: GenericRamRead: address out of bounds (access to %04x in a block of size %04lx)\n", ram->name, addr, ram->len );
     }
 
     if ( ram->disabled )
         return ram->disabled_value;
-    */
+    
     return ram->bytes[addr];
 }
 
@@ -27,6 +20,13 @@ static unsigned char GenericRamRead( busDevice_t *dev, busAddress_t addr, int fi
 static void GenericRamWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     ramInfo_t *ram = dev->data;
     
+    if ( addr >= ram->len ) {
+        printf("%s: warning: GenericRamWrite: address out of bounds (access to %04x in a block of size %04lx)\n", ram->name, addr, ram->len );
+    }
+
+    if ( ram->disabled )
+        return;
+
     ram->bytes[addr] = val;
 }
 
@@ -36,7 +36,7 @@ static void * GenericRamDataPtr( busDevice_t *dev ) {
     return ram->bytes;
 }
 
-busDevice_t *GenericRam( size_t len ) {
+busDevice_t *GenericRam( size_t len, char * name ) {
     busDevice_t *dev;
     ramInfo_t *ram;
 
@@ -44,6 +44,7 @@ busDevice_t *GenericRam( size_t len ) {
         fprintf( stderr, "couldn't allocate %lu byte ram block\n", len );
         return NULL;
     }
+    ram->name = name;
     ram->disabled = 0;
     ram->disabled_value = 0xff;
     ram->len = len;

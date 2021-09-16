@@ -51,7 +51,7 @@ static void SetNextTimerAlarm( gbTimer_t *self, int inCallback ) {
 
     next = NextTime( divTimeOffset, now, cycles ) - now;
 
-    printf( "timer alarm set: %i cycle interval, fires in %i cycles at %i (start %i now %i timepassed %i) %s\n", cycles, next, now + next, divTimeOffset, now, timePassed, inCallback ? "(callback)" : "" );
+    /*printf( "timer alarm set: %i cycle interval, fires in %i cycles at %i (start %i now %i timepassed %i) %s\n", cycles, next, now + next, divTimeOffset, now, timePassed, inCallback ? "(callback)" : "" );*/
 
     if ( !inCallback ) {
         self->alarm.when = next + timePassed;
@@ -95,7 +95,7 @@ static void DivRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char
     divSubcount = 0;
     divTimeOffset = globaltime;
 
-    printf("div register written at %lu\n", globaltime);
+    /*printf("div register written at %lu\n", globaltime);*/
 
     SetNextTimerAlarm( self, 0 );
 }
@@ -118,7 +118,7 @@ static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
         return;
     }
 
-    printf( "write register [0x%04x]%s <- %02hx (byte %hu)\n", addr, reg->name, val, addr );
+    /*printf( "write register [0x%04x]%s <- %02hx (byte %hu)\n", addr, reg->name, val, addr );*/
     control = val & 0x07;
 
     enabled = ( ( control & 4 ) != 0 );
@@ -152,7 +152,7 @@ static void AlarmTimerCallback( void * data ) {
     now = self->alarmManager->AlarmGetFrameTimeCallback(self->alarmManager->alarmGetFrameTimeCallbackData);
     now += self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 1;
 
-    printf("timer fired at %lu\n", now);
+    /*printf("timer fired at %lu\n", now);*/
 
     SetNextTimerAlarm( self, 1 );
 }

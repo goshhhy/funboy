@@ -279,6 +279,7 @@ static unsigned long StepMultiple( struct sm83_s *cpu, unsigned long tcycles, un
 
         if ( cpu->timetarget > ( tcycles - *i ) ) {
             cpu->timetarget -= tcycles - *i;
+            *i = tcycles;
             break;
         }
 

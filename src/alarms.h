@@ -1,7 +1,7 @@
 
 #define MAX_ALARMS 32
 
-typedef void* (AlarmChangedCallback_t)(void * data);
+typedef void (AlarmChangedCallback_t)(void * data);
 typedef int (AlarmGetTimePassedCallback_t)(void * data);
 typedef unsigned long (AlarmGetFrameTimeCallback_t)(void * data);
 

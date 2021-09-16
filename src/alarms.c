@@ -1,5 +1,6 @@
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "alarms.h"
 
@@ -22,15 +23,14 @@ alarm_t * AlarmGetNext( alarmManager_t * manager ) {
     
     if ( !manager )
         return NULL;
-
-    next = manager->alarms[0];
     
-    for ( i = 1; i < manager->numAlarms; i++ ) {
+    for ( i = 0; i < manager->numAlarms; i++ ) {
         alarm_t * alarm = manager->alarms[i];
 
         if ( ( alarm->when > 0 ) ) {
-            if ( ( alarm->when < next->when ) || 
-                next->when < 0 ) {
+            if (    ( next == NULL ) || 
+                    ( alarm->when < next->when ) || 
+                    ( next->when < 1 ) ) {
                 next = alarm;
                 continue;
             }
@@ -46,7 +46,7 @@ void AlarmTimePassed( alarmManager_t * manager, int howmuch, int runCallbacks ) 
     for ( i = 0; i < MAX_ALARMS; i++ ) {
         alarm_t * alarm = manager->alarms[i];
         
-        if ( alarm && ( alarm->when >= 0 ) ) {
+        if ( alarm && ( alarm->when > 0 ) ) {
             alarm->when = alarm->when - howmuch;
             if ( alarm->when < 1 ) {
                 if ( runCallbacks ) {

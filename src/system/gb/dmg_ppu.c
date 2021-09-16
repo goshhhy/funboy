@@ -21,7 +21,6 @@ static unsigned char lcdStat;
 static unsigned char scx, scy, wx, wy;
 static unsigned char ly, lyc;
 static unsigned char bgPal, objPal0, objPal1;
-static short dotClock;
 static int dmaTransferActive = 0;
 static unsigned short dmaAddress;
 static unsigned char windowLines;
@@ -35,27 +34,31 @@ static unsigned char colors[4][3] = {
 	{ 0x38, 0x38, 0x28 },
 };
 
-typedef struct regInfo_s {
-    char* name;
-    size_t len;
-    unsigned long* data;
-} regInfo_t;
-
 static void RenderLine( gbPpu_t *self );
 
 static void DmaAlarmCallback( void * data ) {
     gbPpu_t *self = data;
+    ramInfo_t *oam = self->oam->data;
 
-    unsigned char val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, 0 );
-    self->oamBytes[dmaAddress & 0x00ff] = val;
-    dmaAddress++;
-    if ( ( dmaAddress & 0x00ff ) > 0x9f ) {
-        if ( ( lcdStat & 0x20 ) != 0 ) {
-            self->cpu->Interrupt( self->cpu, 1 );
+    if ( dmaTransferActive ) {
+        unsigned char val = self->cpu->bus->Read8( self->cpu->bus, dmaAddress, 0 );
+        self->oamBytes[dmaAddress & 0x00ff] = val;
+        dmaAddress++;
+        if ( (unsigned char)( dmaAddress & 0x00ff ) > (unsigned char)0x9f ) {
+            if ( ( lcdStat & 0x20 ) != 0 ) {
+                self->cpu->Interrupt( self->cpu, 1 );
+            }
+            oam->disabled = 0;
+            dmaTransferActive = 0;
+        } else {
+            self->dmaAlarm.when = 4;
+            self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
         }
-        dmaTransferActive = 0;
     } else {
-        self->dmaAlarm.when += 4;
+        oam->disabled = 1;
+        dmaTransferActive = 1;
+
+        self->dmaAlarm.when = 4;
         self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
     }
 }
@@ -68,12 +71,11 @@ static void HsyncAlarmCallback( void * data ) {
         if ( ( lcdStat & 0x08 ) != 0 ) {
             self->cpu->Interrupt( self->cpu, 1 );
         }
-        lcdStat |= 0x00;
-    } else {
-        lcdStat |= 0x01;
+        lcdStat &= 0xFC;
+        lcdStat |= 0x02;
     }
 
-    self->hsyncAlarm.when += 456;
+    self->hsyncAlarm.when = 456;
     self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
 }
 
@@ -85,7 +87,7 @@ static void VsyncAlarmCallback( void * data ) {
         ly = 0;
     }
     if ( ly < 144 ) {
-        lcdStat |= 0x02;
+        lcdStat &= 0xFC;
     } 
     if ( ly == 144 ) {
         self->cpu->Interrupt( self->cpu, 0 );
@@ -93,6 +95,8 @@ static void VsyncAlarmCallback( void * data ) {
         if ( ( lcdStat & 0x10 ) != 0 ) {
             self->cpu->Interrupt( self->cpu, 1 );
         }
+        lcdStat &= 0xFC;
+        lcdStat |= 0x01;
     }
     if ( ly == lyc )  {
         if ( ( lcdStat & 0x40 ) != 0 ) {
@@ -103,11 +107,11 @@ static void VsyncAlarmCallback( void * data ) {
         lcdStat = lcdStat & 0xfb;
     }
 
-    self->vsyncAlarm.when += 456;
+    self->vsyncAlarm.when = 456;
     self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
 }
 
-static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, char val, int final ) {
+static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     regInfo_t * reg;
     gbPpu_t * self;
 
@@ -116,10 +120,10 @@ static void DmaRegisterWrite( busDevice_t *dev, busAddress_t addr, char val, int
     reg = dev->data;
     self = reg->data;
 
-    dmaTransferActive = 1;
     dmaAddress = (unsigned short)val << 8;
+    dmaTransferActive = 0;
 
-    self->dmaAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 2;
+    self->dmaAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 4;
     self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
 }
 
@@ -144,13 +148,20 @@ static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
     set_enabled = ( ( lcdc & 0x80 ) != 0 );
     if ( set_enabled ) {
         ;; /* printf( "lcd enabled\n" ); */
-        self->hsyncAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 160;
-        self->vsyncAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 456;
-        self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
+        if ( !enabled ) {
+            self->hsyncAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 160 + 1;
+            self->vsyncAlarm.when = self->alarmManager->AlarmGetTimePassedCallback(self->alarmManager->alarmGetTimePassedCallbackData) + 456 + 1;
+            self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
+        }
     } else {
         /* printf( "lcd disabled\n" ); */
-        if ( enabled && ly < 144 ) {
-            fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
+        if ( enabled ) {
+            if ( ly < 144 ) {
+                fprintf( stderr, "warning: lcd disabled outside of vblank!\n" );
+            }
+            self->hsyncAlarm.when = -1;
+            self->vsyncAlarm.when = -1;
+            self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
         }
         for ( y = 0; y < 144; y++ ) {
             for ( x = 0; x < 160; x++ ) {
@@ -159,8 +170,13 @@ static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
             }
         }
         ly = 0;
+
     }
     enabled = set_enabled;
+}
+
+static unsigned char DmaRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
+    return dmaAddress >> 8;
 }
 
 static unsigned char ControlRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
@@ -473,7 +489,7 @@ gbPpu_t *GbPpu( busDevice_t *bus, sm83_t *cpu, busDevice_t *bgRam, busDevice_t *
     GenericBusMapping( bus, "SCX", 0xFF43, 0xFF43, GenericRegister( "SCX", &scx, 1, NULL, NULL ) );
     GenericBusMapping( bus, "LY", 0xFF44, 0xFF44, GenericRegister( "LY", &ly, 1, NULL, GenericRegisterReadOnly ) );
     GenericBusMapping( bus, "LYC", 0xFF45, 0xFF45, GenericRegister( "LYC", &lyc, 1, NULL, NULL ) );
-    GenericBusMapping( bus, "OamDma", 0xFF46, 0xFF46, GenericRegister( "OamDma", ppu, 1, NULL, DmaRegisterWrite ) );
+    GenericBusMapping( bus, "OamDma", 0xFF46, 0xFF46, GenericRegister( "OamDma", ppu, 1, DmaRegisterRead, DmaRegisterWrite ) );
     GenericBusMapping( bus, "BGP", 0xFF47, 0xFF47, GenericRegister( "BGP", &bgPal, 1, NULL, NULL ) );
     GenericBusMapping( bus, "OBP0", 0xFF48, 0xFF48, GenericRegister( "OBP0", &objPal0, 1, NULL, NULL ) );
     GenericBusMapping( bus, "OBP1", 0xFF49, 0xFF49, GenericRegister( "OBP1", &objPal1, 1, NULL, NULL ) );

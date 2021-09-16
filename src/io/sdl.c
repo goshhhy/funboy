@@ -107,7 +107,7 @@ void IO_ScreenCopy( void ) {
 
 	for( y = 0; y < renderHeight; y++ ) {
 		for ( x = 0; x < renderWidth; x++ ) {
-			SDL_Rect dim, dim2, dim3;
+			SDL_Rect dim, dim2;
 
 			r = screen[(renderWidth * y * 3) + (x * 3) + 0];
 			g = screen[(renderWidth * y * 3) + (x * 3) + 1];

@@ -23,7 +23,7 @@ static unsigned char MBC1RomRead( busDevice_t *dev, busAddress_t addr, int final
     rom = dev->data;
 
     if ( addr >= 0x8000 ) {
-        fprintf( stderr, "warning: MBC1RomRead: address out of bounds [%s:%04lx]\n", rom->name, addr );
+        fprintf( stderr, "warning: MBC1RomRead: address out of bounds [%s:%04x]\n", rom->name, addr );
         return 0;
     }
     if ( addr < 0x4000 )

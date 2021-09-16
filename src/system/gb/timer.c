@@ -9,12 +9,6 @@
 #include "timer.h"
 #include "gb.h"
 
-typedef struct regInfo_s {
-    char* name;
-    size_t len;
-    unsigned long* data;
-} regInfo_t;
-
 static int enabled;
 static unsigned char divReg;
 static unsigned char divTimeOffset;
@@ -24,11 +18,10 @@ static unsigned char countSubcount;
 static unsigned char divisor;
 static unsigned char modulo;
 static unsigned char control;
-static int interrupt_wait;
 static int overflowed;
 
 
-static int DivRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
+static unsigned char DivRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
     regInfo_t * reg;
     gbTimer_t * self;
     unsigned long globaltime;
@@ -86,7 +79,7 @@ static void SetNextTimerAlarm( gbTimer_t *self ) {
     self->alarmManager->AlarmChangedCallback(self->alarmManager->alarmChangedCallbackData);
 }
 
-static int ControlRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
+static unsigned char ControlRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
     return control;
 }
 
@@ -104,7 +97,7 @@ static void ControlRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned 
         return;
     }
 
-    printf( "write register [0x%08lx]%s <- %02hx (byte %lu)\n", addr, reg->name, val, addr );
+    printf( "write register [0x%04x]%s <- %02hx (byte %hu)\n", addr, reg->name, val, addr );
     control = val & 0x07;
 
     enabled = ( ( control & 4 ) != 0 );

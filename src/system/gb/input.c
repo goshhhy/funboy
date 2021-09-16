@@ -8,12 +8,6 @@
 #include "io.h"
 #include "input.h"
 
-typedef struct regInfo_s {
-    char* name;
-    size_t len;
-    unsigned long* data;
-} regInfo_t;
-
 static int buttonsSelected = 0;
 static int padsSelected = 0;
 static unsigned char padStatus = 0xff;

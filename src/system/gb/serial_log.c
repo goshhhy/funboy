@@ -5,12 +5,6 @@
 #include "device.h"
 #include "sm83.h"
 
-typedef struct regInfo_s {
-    char* name;
-    size_t len;
-    unsigned long* data;
-} regInfo_t;
-
 unsigned char datReg = 0;
 
 static unsigned char SerialRegisterRead( busDevice_t *dev, busAddress_t addr, int final ) {
@@ -26,7 +20,7 @@ static unsigned char SerialRegisterRead( busDevice_t *dev, busAddress_t addr, in
     }
     /* printf( "read register [0x%08x]%s:%08x\n", addr, reg->name, *reg->data  ); */
     if ( reg->data ) {
-        return reg->data[addr];
+        return ((unsigned char*)reg->data)[addr];
     }
     return 0;
 }
@@ -45,7 +39,7 @@ static void SerialRegisterWrite( busDevice_t *dev, busAddress_t addr, unsigned c
 
     /* printf( "write register [0x%08x]%s <- %02x (byte %u)\n", addr, reg->name, val, addr ); */
     if ( reg->data ) {
-        reg->data[addr] = val;
+        ((unsigned char*)reg->data)[addr] = val;
     }
     if ( val == 0x81 ) {
         fprintf( stderr, "%c", datReg );

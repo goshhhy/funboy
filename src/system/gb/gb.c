@@ -17,7 +17,7 @@
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
 void MapGbRegs( busDevice_t* gbbus );
-busDevice_t *LoadRom( char* path );
+busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t *alarmManager );
 
 void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "SndCh1Sweep",     0xFF10, 1 );
@@ -64,7 +64,7 @@ void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "IntEnable",       0xFFFF, 1 );
 }
 
-busDevice_t *LoadRom( char* path ) {
+busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t* alarmManager ) {
     unsigned char romName[17] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     busDevice_t* rom = GenericRom( path, 512 );
     unsigned char mapperType;
@@ -89,17 +89,17 @@ busDevice_t *LoadRom( char* path ) {
         case 0x01:
         case 0x02:
         case 0x03:
-            rom = MBC1Rom( path, romSize );
+            rom = MBC1Rom( path, romSize, cartram, alarmManager );
             break;
         case 0x11:
         case 0x12:
         case 0x13:
-            rom = MBC3Rom( path, romSize );
+            rom = MBC3Rom( path, romSize, cartram, alarmManager );
             break;
         default:
             rom = GenericRom( path, romSize );
+            *cartram = GenericRam( 0x2000, "cartram" );
     }
-
     return rom;
 }
 
@@ -155,9 +155,8 @@ int gb_main( char *rompath ) {
     cram = GenericRam( 0x1800, "cram" );
     bgram = GenericRam( 0x800, "bgram" );
     oam = GenericRam( 0xa0, "oam" );
-    cartram = GenericRam( 0x2000, "cartram" );
 
-    rom = LoadRom( rompath );
+    rom = LoadRom( rompath, &cartram, alarmManager );
 
     GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
     GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );

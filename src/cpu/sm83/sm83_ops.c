@@ -73,10 +73,15 @@ void op_sbc( sm83_t *cpu ) {
     SetFlags( cpu, res == 0, 1, (( other & 0xf ) + CPU_FLAG_C(cpu) ) > ( orig & 0xf ), ((orig - other) - CPU_FLAG_C(cpu)) < 0 );
 }
 
-void op_and( sm83_t *cpu ) {
-    unsigned char other = ( CPU_BITS_X(cpu) == 3 ) ? read8( cpu, ++cpu->pc, 1 ) : read_r( cpu, CPU_BITS_Z(cpu) );
-    SetFlags( cpu, ( ( cpu->a = ( cpu->a & other ) ) == 0 ), 0, 1, 0 );
-}
+void op_and_b( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & cpu->b ) ) == 0 ), 0, 1, 0 ); }
+void op_and_c( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & cpu->c ) ) == 0 ), 0, 1, 0 ); }
+void op_and_d( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & cpu->d ) ) == 0 ), 0, 1, 0 ); }
+void op_and_e( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & cpu->e ) ) == 0 ), 0, 1, 0 ); }
+void op_and_h( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & cpu->h ) ) == 0 ), 0, 1, 0 ); }
+void op_and_l( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & cpu->l ) ) == 0 ), 0, 1, 0 ); }
+void op_and_r( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & read8( cpu, READ_HL, 1 ) ) ) == 0 ), 0, 1, 0 ); }
+void op_and_a( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & cpu->a ) ) == 0 ), 0, 1, 0 ); }
+void op_and_i( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a & read8( cpu, ++cpu->pc, 1 ) ) ) == 0 ), 0, 1, 0 ); }
 
 void op_xor_b( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a ^ cpu->b ) ) == 0 ), 0, 0, 0 ); }
 void op_xor_c( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a ^ cpu->c ) ) == 0 ), 0, 0, 0 ); }
@@ -88,10 +93,15 @@ void op_xor_r( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a ^ read8( cpu
 void op_xor_a( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a ^ cpu->a ) ) == 0 ), 0, 0, 0 ); }
 void op_xor_i( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a ^ read8( cpu, ++cpu->pc, 1 ) ) ) == 0 ), 0, 0, 0 ); }
 
-void op_or( sm83_t *cpu ) {
-    unsigned char other = ( CPU_BITS_X(cpu) == 3 ) ? read8( cpu, ++cpu->pc, 1 ) : read_r( cpu, CPU_BITS_Z(cpu) );
-    SetFlags( cpu, ( ( cpu->a = ( cpu->a | other ) ) == 0 ), 0, 0, 0 );
-}
+void op_or_b( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | cpu->b ) ) == 0 ), 0, 0, 0 ); }
+void op_or_c( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | cpu->c ) ) == 0 ), 0, 0, 0 ); }
+void op_or_d( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | cpu->d ) ) == 0 ), 0, 0, 0 ); }
+void op_or_e( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | cpu->e ) ) == 0 ), 0, 0, 0 ); }
+void op_or_h( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | cpu->h ) ) == 0 ), 0, 0, 0 ); }
+void op_or_l( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | cpu->l ) ) == 0 ), 0, 0, 0 ); }
+void op_or_r( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | read8( cpu, READ_HL, 1 ) ) ) == 0 ), 0, 0, 0 ); }
+void op_or_a( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | cpu->a ) ) == 0 ), 0, 0, 0 ); }
+void op_or_i( sm83_t *cpu ) { SetFlags( cpu, ( ( cpu->a = ( cpu->a | read8( cpu, ++cpu->pc, 1 ) ) ) == 0 ), 0, 0, 0 ); }
 
 void op_cp( sm83_t *cpu ) {
     unsigned char other = ( CPU_BITS_X(cpu) == 3 ) ? read8( cpu, ++cpu->pc, 1 ) : read_r( cpu, CPU_BITS_Z(cpu) );

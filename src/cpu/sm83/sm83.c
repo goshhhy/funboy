@@ -173,25 +173,25 @@ static void op_cb( sm83_t *cpu ) {
 }
 
 void (*ops[256])( sm83_t* cpu ) = {
-    op_nop,  op_ld16, op_li16, op_in16,  op_inc,  op_dec,  op_ldd8, op_rlca,    op_l16sp,op_add16,op_la16, op_de16,   op_inc,  op_dec,  op_ldd8, op_rrca, 
-    op_stop, op_ld16, op_li16, op_in16,  op_inc,  op_dec,  op_ldd8, op_rla,     op_jr,   op_add16,op_la16, op_de16,   op_inc,  op_dec,  op_ldd8, op_rra, 
-    op_jrx,  op_ld16, op_li16, op_in16,  op_inc,  op_dec,  op_ldd8, op_daa,     op_jrx,  op_add16,op_la16, op_de16,   op_inc,  op_dec,  op_ldd8, op_cpl, 
-    op_jrx,  op_ld16, op_li16, op_in16,  op_inc,  op_dec,  op_ldd8, op_scf,     op_jrx,  op_add16,op_la16, op_de16,   op_inc,  op_dec,  op_ldd8, op_ccf, 
+    op_nop,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_rlca,     op_l16sp, op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_rrca, 
+    op_stop,  op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_rla,      op_jr,    op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_rra, 
+    op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_daa,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_cpl, 
+    op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_scf,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_ccf, 
 
-    op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,  
-    op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,  
-    op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,  
-    op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_hlt,  op_ld,     op_ld,   op_ld,   op_ld,   op_ld,     op_ld,   op_ld,   op_ld,   op_ld,  
+    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_ld,    op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
+    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_ld,    op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
+    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_ld,    op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
+    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_hlt,   op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
 
-    op_add,  op_add,  op_add,  op_add,    op_add,  op_add,  op_add,  op_add,    op_adc,  op_adc,  op_adc,  op_adc,    op_adc,  op_adc,  op_adc,  op_adc, 
-    op_sub,  op_sub,  op_sub,  op_sub,    op_sub,  op_sub,  op_sub,  op_sub,    op_sbc,  op_sbc,  op_sbc,  op_sbc,    op_sbc,  op_sbc,  op_sbc,  op_sbc, 
-    op_and,  op_and,  op_and,  op_and,    op_and,  op_and,  op_and,  op_and,    op_xor_b,op_xor_c,op_xor_d,op_xor_e,  op_xor_h,op_xor_l,op_xor_r,op_xor_a, 
-    op_or,   op_or,   op_or,   op_or,     op_or,   op_or,   op_or,   op_or,     op_cp,   op_cp,   op_cp,   op_cp,     op_cp,   op_cp,   op_cp,   op_cp,  
+    op_add,   op_add,   op_add,   op_add,    op_add,   op_add,   op_add,   op_add,      op_adc,   op_adc,   op_adc,   op_adc,     op_adc,   op_adc,   op_adc,   op_adc, 
+    op_sub,   op_sub,   op_sub,   op_sub,    op_sub,   op_sub,   op_sub,   op_sub,      op_sbc,   op_sbc,   op_sbc,   op_sbc,     op_sbc,   op_sbc,   op_sbc,   op_sbc, 
+    op_and_b, op_and_c, op_and_d, op_and_e,  op_and_h, op_and_l, op_and_r, op_and_a,    op_xor_b, op_xor_c, op_xor_d, op_xor_e,   op_xor_h, op_xor_l, op_xor_r, op_xor_a, 
+    op_or_b,  op_or_c,  op_or_d,  op_or_e,   op_or_h,  op_or_l,  op_or_r,  op_or_a,     op_cp,    op_cp,    op_cp,    op_cp,      op_cp,    op_cp,    op_cp,    op_cp,  
 
-    op_retx, op_pop,  op_jpx,  op_jp,     op_callx,op_psh,  op_add,  op_rst,    op_retx, op_ret,  op_jpx,  op_cb,     op_callx,op_call, op_adc,  op_rst, 
-    op_retx, op_pop,  op_jpx,  op_bad,    op_callx,op_psh,  op_sub,  op_rst,    op_retx, op_reti, op_jpx,  op_bad,    op_callx,op_bad,  op_sbc,  op_rst, 
-    op_e0,   op_pop,  op_e2,   op_bad,    op_bad,  op_psh,  op_and,  op_rst,    op_addsp,op_jphl, op_ea,   op_bad,    op_bad,  op_bad,  op_xor_i,op_rst, 
-    op_f0,   op_pop,  op_f2,   op_edi,    op_bad,  op_psh,  op_or,   op_rst,    op_lhlsi,op_lsphl,op_fa,   op_edi,    op_bad,  op_bad,  op_cp,   op_rst, 
+    op_retx,  op_pop,   op_jpx,   op_jp,     op_callx, op_psh,   op_add,   op_rst,      op_retx,  op_ret,   op_jpx,   op_cb,      op_callx, op_call,  op_adc,   op_rst, 
+    op_retx,  op_pop,   op_jpx,   op_bad,    op_callx, op_psh,   op_sub,   op_rst,      op_retx,  op_reti,  op_jpx,   op_bad,     op_callx, op_bad,   op_sbc,   op_rst, 
+    op_e0,    op_pop,   op_e2,    op_bad,    op_bad,   op_psh,   op_and_i, op_rst,      op_addsp, op_jphl,  op_ea,    op_bad,     op_bad,   op_bad,   op_xor_i, op_rst, 
+    op_f0,    op_pop,   op_f2,    op_edi,    op_bad,   op_psh,   op_or_i,  op_rst,      op_lhlsi, op_lsphl, op_fa,    op_edi,     op_bad,   op_bad,   op_cp,    op_rst, 
 };
 
 int timings[256] = {

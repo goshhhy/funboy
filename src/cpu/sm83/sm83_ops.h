@@ -5,7 +5,16 @@ void op_add( sm83_t *cpu );
 void op_adc( sm83_t *cpu );
 void op_sub( sm83_t *cpu );
 void op_sbc( sm83_t *cpu );
-void op_and( sm83_t *cpu );
+
+void op_and_b( sm83_t *cpu );
+void op_and_c( sm83_t *cpu );
+void op_and_d( sm83_t *cpu );
+void op_and_e( sm83_t *cpu );
+void op_and_h( sm83_t *cpu );
+void op_and_l( sm83_t *cpu );
+void op_and_r( sm83_t *cpu );
+void op_and_a( sm83_t *cpu );
+void op_and_i( sm83_t *cpu );
 
 void op_xor_b( sm83_t *cpu );
 void op_xor_c( sm83_t *cpu );
@@ -17,7 +26,16 @@ void op_xor_r( sm83_t *cpu );
 void op_xor_a( sm83_t *cpu );
 void op_xor_i( sm83_t *cpu );
 
-void op_or( sm83_t *cpu );
+void op_or_b( sm83_t *cpu );
+void op_or_c( sm83_t *cpu );
+void op_or_d( sm83_t *cpu );
+void op_or_e( sm83_t *cpu );
+void op_or_h( sm83_t *cpu );
+void op_or_l( sm83_t *cpu );
+void op_or_r( sm83_t *cpu );
+void op_or_a( sm83_t *cpu );
+void op_or_i( sm83_t *cpu );
+
 void op_cp( sm83_t *cpu );
 void op_cpl( sm83_t *cpu );
 void op_inc( sm83_t *cpu );

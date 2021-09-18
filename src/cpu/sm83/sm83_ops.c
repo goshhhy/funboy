@@ -45,6 +45,70 @@ void op_ld( sm83_t *cpu ) {
     write_r( cpu, read_r( cpu, CPU_BITS_Z(cpu) ), CPU_BITS_Y(cpu));
 }
 
+void op_ld_b_c( sm83_t *cpu ) {cpu->b = cpu->c;}
+void op_ld_b_d( sm83_t *cpu ) {cpu->b = cpu->d;}
+void op_ld_b_e( sm83_t *cpu ) {cpu->b = cpu->e;}
+void op_ld_b_h( sm83_t *cpu ) {cpu->b = cpu->h;}
+void op_ld_b_l( sm83_t *cpu ) {cpu->b = cpu->l;}
+void op_ld_b_r( sm83_t *cpu ) {cpu->b = read8(cpu, READ_HL, 1);}
+void op_ld_b_a( sm83_t *cpu ) {cpu->b = cpu->a;}
+
+void op_ld_c_b( sm83_t *cpu ) {cpu->c = cpu->b;}
+void op_ld_c_d( sm83_t *cpu ) {cpu->c = cpu->d;}
+void op_ld_c_e( sm83_t *cpu ) {cpu->c = cpu->e;}
+void op_ld_c_h( sm83_t *cpu ) {cpu->c = cpu->h;}
+void op_ld_c_l( sm83_t *cpu ) {cpu->c = cpu->l;}
+void op_ld_c_r( sm83_t *cpu ) {cpu->c = read8(cpu, READ_HL, 1);}
+void op_ld_c_a( sm83_t *cpu ) {cpu->c = cpu->a;}
+
+void op_ld_d_b( sm83_t *cpu ) {cpu->d = cpu->b;}
+void op_ld_d_c( sm83_t *cpu ) {cpu->d = cpu->c;}
+void op_ld_d_e( sm83_t *cpu ) {cpu->d = cpu->e;}
+void op_ld_d_h( sm83_t *cpu ) {cpu->d = cpu->h;}
+void op_ld_d_l( sm83_t *cpu ) {cpu->d = cpu->l;}
+void op_ld_d_r( sm83_t *cpu ) {cpu->d = read8(cpu, READ_HL, 1);}
+void op_ld_d_a( sm83_t *cpu ) {cpu->d = cpu->a;}
+
+void op_ld_e_b( sm83_t *cpu ) {cpu->e = cpu->b;}
+void op_ld_e_c( sm83_t *cpu ) {cpu->e = cpu->c;}
+void op_ld_e_d( sm83_t *cpu ) {cpu->e = cpu->d;}
+void op_ld_e_h( sm83_t *cpu ) {cpu->e = cpu->h;}
+void op_ld_e_l( sm83_t *cpu ) {cpu->e = cpu->l;}
+void op_ld_e_r( sm83_t *cpu ) {cpu->e = read8(cpu, READ_HL, 1);}
+void op_ld_e_a( sm83_t *cpu ) {cpu->e = cpu->a;}
+
+void op_ld_h_b( sm83_t *cpu ) {cpu->h = cpu->b;}
+void op_ld_h_c( sm83_t *cpu ) {cpu->h = cpu->c;}
+void op_ld_h_d( sm83_t *cpu ) {cpu->h = cpu->d;}
+void op_ld_h_e( sm83_t *cpu ) {cpu->h = cpu->e;}
+void op_ld_h_l( sm83_t *cpu ) {cpu->h = cpu->l;}
+void op_ld_h_r( sm83_t *cpu ) {cpu->h = read8(cpu, READ_HL, 1);}
+void op_ld_h_a( sm83_t *cpu ) {cpu->h = cpu->a;}
+
+void op_ld_l_b( sm83_t *cpu ) {cpu->l = cpu->b;}
+void op_ld_l_c( sm83_t *cpu ) {cpu->l = cpu->c;}
+void op_ld_l_d( sm83_t *cpu ) {cpu->l = cpu->d;}
+void op_ld_l_e( sm83_t *cpu ) {cpu->l = cpu->e;}
+void op_ld_l_h( sm83_t *cpu ) {cpu->l = cpu->h;}
+void op_ld_l_r( sm83_t *cpu ) {cpu->l = read8(cpu, READ_HL, 1);}
+void op_ld_l_a( sm83_t *cpu ) {cpu->l = cpu->a;}
+
+void op_ld_r_b( sm83_t *cpu ) {write8(cpu, READ_HL, cpu->b, 1);}
+void op_ld_r_c( sm83_t *cpu ) {write8(cpu, READ_HL, cpu->c, 1);}
+void op_ld_r_d( sm83_t *cpu ) {write8(cpu, READ_HL, cpu->d, 1);}
+void op_ld_r_e( sm83_t *cpu ) {write8(cpu, READ_HL, cpu->e, 1);}
+void op_ld_r_h( sm83_t *cpu ) {write8(cpu, READ_HL, cpu->h, 1);}
+void op_ld_r_l( sm83_t *cpu ) {write8(cpu, READ_HL, cpu->l, 1);}
+void op_ld_r_a( sm83_t *cpu ) {write8(cpu, READ_HL, cpu->a, 1);}
+
+void op_ld_a_b( sm83_t *cpu ) {cpu->a = cpu->b;}
+void op_ld_a_c( sm83_t *cpu ) {cpu->a = cpu->c;}
+void op_ld_a_d( sm83_t *cpu ) {cpu->a = cpu->d;}
+void op_ld_a_e( sm83_t *cpu ) {cpu->a = cpu->e;}
+void op_ld_a_h( sm83_t *cpu ) {cpu->a = cpu->h;}
+void op_ld_a_l( sm83_t *cpu ) {cpu->a = cpu->l;}
+void op_ld_a_r( sm83_t *cpu ) {cpu->a = read8(cpu, READ_HL, 1);}
+
 void op_ldd8( sm83_t *cpu ) {
     write_r( cpu, read8( cpu, cpu->pc++ + 1, 0 ), CPU_BITS_Y(cpu));
 }

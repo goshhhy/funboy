@@ -178,10 +178,10 @@ void (*ops[256])( sm83_t* cpu ) = {
     op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_daa,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_cpl, 
     op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_scf,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_ccf, 
 
-    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_ld,    op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
-    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_ld,    op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
-    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_ld,    op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
-    op_ld,    op_ld,    op_ld,    op_ld,     op_ld,    op_ld,    op_hlt,   op_ld,       op_ld,    op_ld,    op_ld,    op_ld,      op_ld,    op_ld,    op_ld,    op_ld,  
+    op_nop,   op_ld_b_c,op_ld_b_d,op_ld_b_e, op_ld_b_h,op_ld_b_l,op_ld_b_r,op_ld_b_a,   op_ld_c_b,op_nop,   op_ld_c_d,op_ld_c_e,  op_ld_c_h,op_ld_c_l,op_ld_c_r,op_ld_c_a,  
+    op_ld_d_b,op_ld_d_c,op_nop,   op_ld_d_e, op_ld_d_h,op_ld_d_l,op_ld_d_r,op_ld_d_a,   op_ld_e_b,op_ld_e_c,op_ld_e_d,op_nop,     op_ld_e_h,op_ld_e_l,op_ld_e_r,op_ld_e_a,  
+    op_ld_h_b,op_ld_h_c,op_ld_h_d,op_ld_h_e, op_nop,   op_ld_h_l,op_ld_h_r,op_ld_h_a,   op_ld_l_b,op_ld_l_c,op_ld_l_d,op_ld_l_e,  op_ld_l_h,op_nop,   op_ld_l_r,op_ld_l_a,  
+    op_ld_r_b,op_ld_r_c,op_ld_r_d,op_ld_r_e, op_ld_r_h,op_ld_r_l,op_hlt,   op_ld_r_a,   op_ld_a_b,op_ld_a_c,op_ld_a_d,op_ld_a_e,  op_ld_a_h,op_ld_a_l,op_ld_a_r,op_nop,
 
     op_add,   op_add,   op_add,   op_add,    op_add,   op_add,   op_add,   op_add,      op_adc,   op_adc,   op_adc,   op_adc,     op_adc,   op_adc,   op_adc,   op_adc, 
     op_sub,   op_sub,   op_sub,   op_sub,    op_sub,   op_sub,   op_sub,   op_sub,      op_sbc,   op_sbc,   op_sbc,   op_sbc,     op_sbc,   op_sbc,   op_sbc,   op_sbc, 

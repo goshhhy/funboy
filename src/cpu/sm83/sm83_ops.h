@@ -1,5 +1,71 @@
 void op_nop( sm83_t *cpu );
+
 void op_ld( sm83_t *cpu );
+
+void op_ld_b_c( sm83_t *cpu );
+void op_ld_b_d( sm83_t *cpu );
+void op_ld_b_e( sm83_t *cpu );
+void op_ld_b_h( sm83_t *cpu );
+void op_ld_b_l( sm83_t *cpu );
+void op_ld_b_r( sm83_t *cpu );
+void op_ld_b_a( sm83_t *cpu );
+
+void op_ld_c_b( sm83_t *cpu );
+void op_ld_c_d( sm83_t *cpu );
+void op_ld_c_e( sm83_t *cpu );
+void op_ld_c_h( sm83_t *cpu );
+void op_ld_c_l( sm83_t *cpu );
+void op_ld_c_r( sm83_t *cpu );
+void op_ld_c_a( sm83_t *cpu );
+
+void op_ld_d_b( sm83_t *cpu );
+void op_ld_d_c( sm83_t *cpu );
+void op_ld_d_e( sm83_t *cpu );
+void op_ld_d_h( sm83_t *cpu );
+void op_ld_d_l( sm83_t *cpu );
+void op_ld_d_r( sm83_t *cpu );
+void op_ld_d_a( sm83_t *cpu );
+
+void op_ld_e_b( sm83_t *cpu );
+void op_ld_e_c( sm83_t *cpu );
+void op_ld_e_d( sm83_t *cpu );
+void op_ld_e_h( sm83_t *cpu );
+void op_ld_e_l( sm83_t *cpu );
+void op_ld_e_r( sm83_t *cpu );
+void op_ld_e_a( sm83_t *cpu );
+
+void op_ld_h_b( sm83_t *cpu );
+void op_ld_h_c( sm83_t *cpu );
+void op_ld_h_d( sm83_t *cpu );
+void op_ld_h_e( sm83_t *cpu );
+void op_ld_h_l( sm83_t *cpu );
+void op_ld_h_r( sm83_t *cpu );
+void op_ld_h_a( sm83_t *cpu );
+
+void op_ld_l_b( sm83_t *cpu );
+void op_ld_l_c( sm83_t *cpu );
+void op_ld_l_d( sm83_t *cpu );
+void op_ld_l_e( sm83_t *cpu );
+void op_ld_l_h( sm83_t *cpu );
+void op_ld_l_r( sm83_t *cpu );
+void op_ld_l_a( sm83_t *cpu );
+
+void op_ld_r_b( sm83_t *cpu );
+void op_ld_r_c( sm83_t *cpu );
+void op_ld_r_d( sm83_t *cpu );
+void op_ld_r_e( sm83_t *cpu );
+void op_ld_r_h( sm83_t *cpu );
+void op_ld_r_l( sm83_t *cpu );
+void op_ld_r_a( sm83_t *cpu );
+
+void op_ld_a_b( sm83_t *cpu );
+void op_ld_a_c( sm83_t *cpu );
+void op_ld_a_d( sm83_t *cpu );
+void op_ld_a_e( sm83_t *cpu );
+void op_ld_a_h( sm83_t *cpu );
+void op_ld_a_l( sm83_t *cpu );
+void op_ld_a_r( sm83_t *cpu );
+
 void op_ldd8( sm83_t *cpu );
 void op_add( sm83_t *cpu );
 void op_adc( sm83_t *cpu );

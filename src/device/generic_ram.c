@@ -6,9 +6,11 @@
 static unsigned char GenericRamRead( busDevice_t *dev, busAddress_t addr, int final ) {
     ramInfo_t *ram = dev->data;
 
+#ifdef BUS_MAP_PARANOID
     if ( addr >= ram->len ) {
         printf("%s: warning: GenericRamRead: address out of bounds (access to %04x in a block of size %04lx)\n", ram->name, addr, ram->len );
     }
+#endif
 
     if ( ram->disabled )
         return ram->disabled_value;
@@ -20,9 +22,11 @@ static unsigned char GenericRamRead( busDevice_t *dev, busAddress_t addr, int fi
 static void GenericRamWrite( busDevice_t *dev, busAddress_t addr, unsigned char val, int final ) {
     ramInfo_t *ram = dev->data;
     
+#ifdef BUS_MAP_PARANOID
     if ( addr >= ram->len ) {
         printf("%s: warning: GenericRamWrite: address out of bounds (access to %04x in a block of size %04lx)\n", ram->name, addr, ram->len );
     }
+#endif
 
     if ( ram->disabled )
         return;

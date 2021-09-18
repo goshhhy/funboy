@@ -41,10 +41,6 @@ int NzNc( sm83_t *cpu ) {
 
 void op_nop( sm83_t *cpu ) {}
 
-void op_ld( sm83_t *cpu ) {
-    write_r( cpu, read_r( cpu, CPU_BITS_Z(cpu) ), CPU_BITS_Y(cpu));
-}
-
 void op_ld_b_c( sm83_t *cpu ) {cpu->b = cpu->c;}
 void op_ld_b_d( sm83_t *cpu ) {cpu->b = cpu->d;}
 void op_ld_b_e( sm83_t *cpu ) {cpu->b = cpu->e;}
@@ -178,16 +174,72 @@ void op_cpl( sm83_t *cpu ) {
     SetFlags( cpu, CPU_FLAG_Z(cpu), 1, 1, CPU_FLAG_C(cpu) );
 }
 
-void op_inc( sm83_t *cpu ) {
-    unsigned char in = read_r( cpu, CPU_BITS_Y(cpu)), res = in + 1;
-    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf), CPU_FLAG_C(cpu) );
-    write_r( cpu, res, CPU_BITS_Y(cpu));
+void op_inc_b( sm83_t *cpu ) {
+    unsigned char in = cpu->b, res = ++cpu->b;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_inc_c( sm83_t *cpu ) {
+    unsigned char in = cpu->c, res = ++cpu->c;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_inc_d( sm83_t *cpu ) {
+    unsigned char in = cpu->d, res = ++cpu->d;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_inc_e( sm83_t *cpu ) {
+    unsigned char in = cpu->e, res = ++cpu->e;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_inc_h( sm83_t *cpu ) {
+    unsigned char in = cpu->h, res = ++cpu->h;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_inc_l( sm83_t *cpu ) {
+    unsigned char in = cpu->l, res = ++cpu->l;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_inc_hl( sm83_t *cpu ) {
+    unsigned char in = read8(cpu, READ_HL, 1), res = in + 1;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
+    write8(cpu, READ_HL, res, 1);
+}
+void op_inc_a( sm83_t *cpu ) {
+    unsigned char in = cpu->a, res = ++cpu->a;
+    SetFlags( cpu, res == 0, 0, ( res & 0xf ) < ( in & 0xf ), CPU_FLAG_C( cpu ) );
 }
 
-void op_dec( sm83_t *cpu ) {
-    unsigned char in = read_r( cpu, CPU_BITS_Y(cpu)), res = in - 1;
-    SetFlags( cpu, res == 0, 1, ( res & 0x0f ) > ( in & 0x0f), CPU_FLAG_C(cpu) );
-    write_r( cpu, res, CPU_BITS_Y(cpu));
+void op_dec_b( sm83_t *cpu ) {
+    unsigned char in = cpu->b, res = --cpu->b;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_dec_c( sm83_t *cpu ) {
+    unsigned char in = cpu->c, res = --cpu->c;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_dec_d( sm83_t *cpu ) {
+    unsigned char in = cpu->d, res = --cpu->d;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_dec_e( sm83_t *cpu ) {
+    unsigned char in = cpu->e, res = --cpu->e;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_dec_h( sm83_t *cpu ) {
+    unsigned char in = cpu->h, res = --cpu->h;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_dec_l( sm83_t *cpu ) {
+    unsigned char in = cpu->l, res = --cpu->l;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
+}
+void op_dec_hl( sm83_t *cpu ) {
+    unsigned char in = read8(cpu, READ_HL, 1), res = in - 1;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
+    write8(cpu, READ_HL, res, 1);
+}
+void op_dec_a( sm83_t *cpu ) {
+    unsigned char in = cpu->a, res = --cpu->a;
+    SetFlags( cpu, res == 0, 1, ( res & 0xf ) > ( in & 0xf ), CPU_FLAG_C( cpu ) );
 }
 
 void op_ccf( sm83_t *cpu ) {

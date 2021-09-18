@@ -102,10 +102,26 @@ void op_or_r( sm83_t *cpu );
 void op_or_a( sm83_t *cpu );
 void op_or_i( sm83_t *cpu );
 
+void op_inc_b( sm83_t *cpu );
+void op_inc_c( sm83_t *cpu );
+void op_inc_d( sm83_t *cpu );
+void op_inc_e( sm83_t *cpu );
+void op_inc_h( sm83_t *cpu );
+void op_inc_l( sm83_t *cpu );
+void op_inc_hl( sm83_t *cpu );
+void op_inc_a( sm83_t *cpu );
+
+void op_dec_b( sm83_t *cpu );
+void op_dec_c( sm83_t *cpu );
+void op_dec_d( sm83_t *cpu );
+void op_dec_e( sm83_t *cpu );
+void op_dec_h( sm83_t *cpu );
+void op_dec_l( sm83_t *cpu );
+void op_dec_hl( sm83_t *cpu );
+void op_dec_a( sm83_t *cpu );
+
 void op_cp( sm83_t *cpu );
 void op_cpl( sm83_t *cpu );
-void op_inc( sm83_t *cpu );
-void op_dec( sm83_t *cpu );
 void op_ccf( sm83_t *cpu );
 void op_scf( sm83_t *cpu );
 void op_daa( sm83_t *cpu );

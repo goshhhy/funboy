@@ -173,10 +173,10 @@ static void op_cb( sm83_t *cpu ) {
 }
 
 void (*ops[256])( sm83_t* cpu ) = {
-    op_nop,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_rlca,     op_l16sp, op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_rrca, 
-    op_stop,  op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_rla,      op_jr,    op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_rra, 
-    op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_daa,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_cpl, 
-    op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc,   op_dec,   op_ldd8,  op_scf,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc,   op_dec,   op_ldd8,  op_ccf, 
+    op_nop,   op_ld16,  op_li16,  op_in16,   op_inc_b, op_dec_b, op_ldd8,  op_rlca,     op_l16sp, op_add16, op_la16,  op_de16,    op_inc_c, op_dec_c, op_ldd8,  op_rrca, 
+    op_stop,  op_ld16,  op_li16,  op_in16,   op_inc_d, op_dec_d, op_ldd8,  op_rla,      op_jr,    op_add16, op_la16,  op_de16,    op_inc_e, op_dec_e, op_ldd8,  op_rra, 
+    op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc_h, op_dec_h, op_ldd8,  op_daa,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc_l, op_dec_l, op_ldd8,  op_cpl, 
+    op_jrx,   op_ld16,  op_li16,  op_in16,   op_inc_hl,op_dec_hl,op_ldd8,  op_scf,      op_jrx,   op_add16, op_la16,  op_de16,    op_inc_a, op_dec_a, op_ldd8,  op_ccf, 
 
     op_nop,   op_ld_b_c,op_ld_b_d,op_ld_b_e, op_ld_b_h,op_ld_b_l,op_ld_b_r,op_ld_b_a,   op_ld_c_b,op_nop,   op_ld_c_d,op_ld_c_e,  op_ld_c_h,op_ld_c_l,op_ld_c_r,op_ld_c_a,  
     op_ld_d_b,op_ld_d_c,op_nop,   op_ld_d_e, op_ld_d_h,op_ld_d_l,op_ld_d_r,op_ld_d_a,   op_ld_e_b,op_ld_e_c,op_ld_e_d,op_nop,     op_ld_e_h,op_ld_e_l,op_ld_e_r,op_ld_e_a,  

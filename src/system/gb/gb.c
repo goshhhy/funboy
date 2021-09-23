@@ -165,8 +165,6 @@ int gb_main( char *rompath ) {
         return 1;
     }
 
-    return 0;
-
     GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
     GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );
     GenericBusMapping( gbbus, "bgram",   0x9800, 0x9fff, bgram );

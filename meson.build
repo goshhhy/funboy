@@ -13,6 +13,22 @@ else
     error('invalid frontend target')
 endif
 
+bus_size = get_option('bus_size')
+bus_impl_fast = get_option('bus_impl_fast')
+bus_paranoid = get_option('bus_paranoid')
+
+if bus_size == '32'
+    add_global_arguments('-DBUS_SIZE_32', language : 'c')
+else
+    if bus_impl_fast == true
+        add_global_arguments('-DBUS_IMPL_FAST16', language : 'c')
+    endif
+endif
+
+if bus_paranoid == true
+    add_global_arguments('-DBUS_PARANOID', language : 'c')
+endif
+
 executable('funboy', [frontend_sources, 'src/cpu/sm83/sm83.c', 'src/cpu/sm83/sm83_ops.c', 
                         'src/cpu/sm83/sm83_cached.c', 'src/device/generic_ram.c', 
                         'src/device/generic_rom.c', 'src/device/generic_bus.c',

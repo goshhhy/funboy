@@ -3,3 +3,5 @@ option('frontend', type: 'combo', choices : ['sdl', 'fbdev'], value : 'sdl')
 option('bus_size', type: 'combo', choices: ['16', '32'], value: '16')
 option('bus_impl_fast', type: 'boolean', value: true)
 option('bus_paranoid', type: 'boolean', value: false)
+
+option('sm83_trace', type: 'boolean', value: false)

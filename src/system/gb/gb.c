@@ -71,6 +71,9 @@ busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t* alarmMa
     size_t romSize;
     int i;
 
+    if ( !rom )
+        return NULL;
+
     for ( i = 0; i < 16; i++ )
         romName[i] = rom->Read8( rom, 0x134 + i, 0 );
 
@@ -157,6 +160,12 @@ int gb_main( char *rompath ) {
     oam = GenericRam( 0xa0, "oam" );
 
     rom = LoadRom( rompath, &cartram, alarmManager );
+
+    if ( !rom ) {
+        return 1;
+    }
+
+    return 0;
 
     GenericBusMapping( gbbus, "rom",     0x0000, 0x7fff, rom );
     GenericBusMapping( gbbus, "cram",    0x8000, 0x97ff, cram );

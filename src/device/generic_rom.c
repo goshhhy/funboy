@@ -66,7 +66,7 @@ busDevice_t *GenericRom( char *fileName, size_t len ) {
     size_t rem;
 
     if ( !f ) {
-        fprintf( stderr, "couldn't open rom %s\n", fileName );
+        fprintf( stderr, "couldn't open rom file \"%s\"\n", fileName );
         return NULL;
     }
     if ( !( dev = malloc( sizeof( busDevice_t ) ) ) || !( rom = malloc( sizeof( romInfo_t ) ) ) ) {
@@ -84,8 +84,13 @@ busDevice_t *GenericRom( char *fileName, size_t len ) {
         size_t read = fread( rom->bytes, 1, rem, f );
         rem = rem - read;
         if ( read == 0 ) {
+            if ( feof( f ) ) {
             fprintf( stderr, "warning: GenericRom: hit eof with %lu bytes remaining while loading %s\n"\
                      "                     (check if file is correct)\n", rem, fileName );
+            } else if ( ferror( f ) ) {
+                fprintf( stderr, "warning: GenericRom: hit error with %lu bytes remaining while loading %s\n"\
+                     "                     (check if file is correct)\n", rem, fileName );
+            }
             break;
         }
     }

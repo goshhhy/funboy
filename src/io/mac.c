@@ -33,7 +33,7 @@ void Initialize(void);
 void main(void)
 {
 	Initialize();
-	gb_main( "cpu_instrs.gb" );
+	gb_main( "zelda.gb" );
 }
 
 void IO_SetPaletteColor( int index, unsigned char r, unsigned char g, unsigned char b ) {
@@ -96,12 +96,35 @@ int IO_Init( int vWidth, int vHeight, int rWidth, int rHeight ) {
 	return 0;
 }
 
+static int IO_UpdateScreen( void ) {
+	int x, y;
+	Rect r = qd.thePort->portRect;
+	WindowPtr wind = (WindowPtr)mainPtr;
+
+	BeginUpdate( wind );
+	SetPort( mainPtr );
+
+	ForeColor( blackColor );
+	BackColor( whiteColor );
+
+	CopyBits( *pixmap, *(((CGrafPtr)wind)->portPixMap),
+			&gbRect, &(wind->portRect),
+			srcCopy, NULL);
+
+	EndUpdate( (WindowPtr)wind );
+}
+
 int IO_Update( void ) {
 	int eventMask = mDownMask | mUpMask | keyDownMask | keyUpMask | updateMask | activMask;
 	EventRecord e;
 	WindowPtr window;
+	static int updcount = 0;
 		
+	//printf("IO_Update()");
+
 	SystemTask();
+	InvalRect( &qd.thePort->portRect );
+	IO_UpdateScreen();
 	while( GetNextEvent( everyEvent, &e ) ) {
 		switch ( e.what ) {
 			case mouseDown:
@@ -126,24 +149,9 @@ int IO_Update( void ) {
 				}
 				break;
 			case updateEvt: {
-				int x, y;
-				Rect r = qd.thePort->portRect;
-				WindowPtr wind = (WindowPtr)e.message;
-				
-				BeginUpdate( wind );
-				SetPort( mainPtr );
-
-				ForeColor( blackColor );
-				BackColor( whiteColor );
-
-				EraseRect( &r );
-				CopyBits( *pixmap, *(((CGrafPtr)wind)->portPixMap),
-						&gbRect, &(wind->portRect),
-						srcCopy, NULL);
-				
-				EndUpdate( (WindowPtr)e.message );
+					IO_UpdateScreen();
+				}
 				break;
-			}
 			case mouseUp:
 				break;
 		}		

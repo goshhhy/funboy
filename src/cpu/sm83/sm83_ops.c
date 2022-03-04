@@ -445,10 +445,12 @@ void op_fa( sm83_t *cpu ) {
 }
 
 void op_addsp( sm83_t *cpu ) {
-    unsigned long oldsp = cpu->sp;
+    unsigned short oldsp = cpu->sp;
     char val = (signed char)read8( cpu, ++cpu->pc, 1 );
-    cpu->sp = cpu->sp + val;
-    SetFlags( cpu, 0, 0, ( oldsp & 0xf ) > ( cpu->sp & 0xf ), ( oldsp & 0xff ) > ( cpu->sp & 0xff ) );
+    unsigned short newsp = oldsp + val;
+
+    SetFlags( cpu, 0, 0, ( oldsp & 0xf ) > ( newsp & 0xf ), ( oldsp & 0xff ) > ( newsp & 0xff ) );
+    cpu->sp = newsp;
 }
 
 void op_jphl( sm83_t *cpu ) {
@@ -462,7 +464,7 @@ void op_lhlsi( sm83_t *cpu ) {
 }
 
 void op_l16sp( sm83_t *cpu ) {
-    unsigned long addr = read16( cpu, cpu->pc+1, 1 );  
+    unsigned short addr = read16( cpu, cpu->pc+1, 1 );  
     write8( cpu, addr + 1, (cpu->sp & 0xff00) >> 8, 0 );
     write8( cpu, addr, cpu->sp & 0xff, 1 );
     cpu->pc += 2;

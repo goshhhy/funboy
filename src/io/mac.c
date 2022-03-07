@@ -18,15 +18,42 @@
 #include "gb.h"
 #include "io.h"
 
-Rect gbRect, windRect;
-WindowPtr	mainPtr;
+#define rMenuBar 128
 
-char * screen = NULL;
-int renderWidth, renderHeight;
+enum {
+	mApple = 128,
+	mFile,
+	mEmulation,
+};
 
-PaletteHandle palette;
+enum {
+	iAbout = 1,
+};
 
-PixMapHandle pixmap;
+enum {
+	iOpen = 1,
+	iClose,
+	
+	iQuit = 4,
+};
+
+enum {
+	iPause = 1,
+	iReset,
+
+	iTurbo = 4,
+};
+
+Rect 			gbRect, windRect;
+WindowPtr		mainPtr;
+
+char * 			screen = NULL;
+int 			renderWidth, renderHeight;
+
+PaletteHandle 	palette;
+PixMapHandle 	pixmap;
+
+static int gRun = 1;
 
 void Initialize(void);
 
@@ -50,9 +77,10 @@ void IO_SetPaletteColor( int index, unsigned char r, unsigned char g, unsigned c
 
 void Initialize(void) {
 	RGBColor bg, fg;
-
 	OSErr		error;
 	SysEnvRec	theWorld;
+	Handle 			menuBar;
+
 
 	error = SysEnvirons(1, &theWorld);
 	
@@ -63,6 +91,15 @@ void Initialize(void) {
 	TEInit();
 	InitDialogs(nil);
 	InitCursor();
+
+	// set up menus
+	menuBar = GetNewMBar(rMenuBar);
+	if ( menuBar ) {
+		SetMenuBar( menuBar );
+		DisposeHandle( menuBar );
+		AppendResMenu( GetMenuHandle(mApple), 'DRVR'); // set up apple menu items
+		DrawMenuBar();
+	}
 
 	palette = NewPalette( 192, nil, pmTolerant, 0x5000 );
 
@@ -114,6 +151,50 @@ static int IO_UpdateScreen( void ) {
 	EndUpdate( (WindowPtr)wind );
 }
 
+static void IO_HandleAppleMenuItem( short item ) {
+	Str255 itemName;
+
+	if ( item == iAbout ) {
+		; // todo: show about window
+	} else {
+		GetMenuItemText(GetMenuHandle(mApple), item, itemName);
+		OpenDeskAcc(itemName);
+	}
+}
+
+static void IO_HandleFileMenuItem( short item ) {
+	switch( item ) {
+		case iQuit:
+			gRun = 0;
+			break;
+		default:
+			break;
+	}
+}
+static void IO_HandleEmulationMenuItem( short item ) {}
+
+
+static void IO_HandleMenuItem( long menuitem ) {
+	short menu = (menuitem >> 16);
+	short item = (menuitem & 0xffff);
+
+	switch( menu ) {
+		case mApple:
+			IO_HandleAppleMenuItem( item );
+			break;
+		case mFile:
+			IO_HandleFileMenuItem( item );
+			break;
+		case mEmulation:
+			IO_HandleEmulationMenuItem( item );
+			break;
+		default:
+			return;
+	}
+
+	HiliteMenu(0);
+}
+
 int IO_Update( void ) {
 	int eventMask = mDownMask | mUpMask | keyDownMask | keyUpMask | updateMask | activMask;
 	EventRecord e;
@@ -134,6 +215,7 @@ int IO_Update( void ) {
 						break;
 					}
 					case inMenuBar: {
+						IO_HandleMenuItem( MenuSelect( e.where ) );
 						break;
 					}
 					case inContent: {
@@ -157,7 +239,7 @@ int IO_Update( void ) {
 		}		
 	}
 		
-	return 1;
+	return gRun;
 }
 
 void IO_SetRenderRes( int x, int y ) {

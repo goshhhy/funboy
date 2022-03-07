@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "device.h"
+#include "sm83.h"
 #include "gb.h"
 #include "io.h"
 
@@ -114,7 +116,7 @@ static int IO_UpdateScreen( void ) {
 	EndUpdate( (WindowPtr)wind );
 }
 
-int IO_Update( void ) {
+int IO_Update( sm83_t * cpu ) {
 	int eventMask = mDownMask | mUpMask | keyDownMask | keyUpMask | updateMask | activMask;
 	EventRecord e;
 	WindowPtr window;

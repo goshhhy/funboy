@@ -67,6 +67,7 @@ static void KeyPressCallback( int key ) {
             buttonStatus = buttonStatus & 0xf7;
             break;
         default:
+            printf("not bound: %i\n", key );
             break;
     }
 }

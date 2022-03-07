@@ -12,6 +12,8 @@
 #include <sys/mman.h>
 #include <linux/fb.h>
 
+#include "device.h"
+#include "sm83.h"
 #include "io.h"
 #include "gb.h"
 
@@ -174,7 +176,7 @@ void IO_SetKeyReleaseCallback( void (*Callback)( int key ) ) {
 	KeyReleaseCallback = Callback;	
 }
 
-int IO_Update( void ) {
+int IO_Update( sm83_t * cpu ) {
 	int r = 1;
 
 	/*printf( "begin video update %i\n", updates++ );*/

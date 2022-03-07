@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "device.h"
 
@@ -11,6 +12,10 @@
 #define read16( cpu, addr, final ) ( ( cpu->bus->Read8( cpu->bus, addr + 1, 0 ) << 8 ) | cpu->bus->Read8( cpu->bus, addr, final ) )
 
 extern int printSteps;
+
+#ifdef SM83_STATS
+long int pairstats[65536];
+#endif
 
 /* support functions */
 
@@ -194,7 +199,7 @@ void (*ops[256])( sm83_t* cpu ) = {
     op_f0,    op_pop,   op_f2,    op_edi,    op_bad,   op_psh,   op_or_i,  op_rst,      op_lhlsi, op_lsphl, op_fa,    op_edi,     op_bad,   op_bad,   op_cp,    op_rst, 
 };
 
-int timings[256] = {
+static int timings[256] = {
     4, 12,  8,  8,  4,  4,  8,  4, 20,  8,  8,  8,  4,  4,  8,  4,
     4, 12,  8,  8,  4,  4,  8,  4, 12,  8,  8,  8,  4,  4,  8,  4,
     8, 12,  8,  8,  4,  4,  8,  4,  8,  8,  8,  8,  4,  4,  8,  4,
@@ -213,33 +218,31 @@ int timings[256] = {
     12, 12, 8,  4,  4, 16,  8, 16, 12,  8, 16,  4,  4,  4,  8,  16,
 };
 
-static void Step( sm83_t *cpu ) {
-    unsigned char active;
+static int sizes[256] = {
+    1, 3, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 1, 1, 2, 1,
+    2, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1,
+    2, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1,
+    2, 3, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1,
 
-    if ( cpu->fetched == 0 ) {
-        cpu->op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
-        cpu->timetarget += timings[cpu->op];
-        cpu->fetched = 1;
-    }
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 
-    cpu->timetarget--;
-    if ( cpu->timetarget > 0 )
-        return;
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 
-    if ( ! cpu->halted ) {
-#ifdef SM83_TRACE
-        printf("[%04x] %02x b:%02x c:%02x d:%02x e:%02x h:%02x l:%02x a:%02x f:%02x\n", 
-    				cpu->pc, cpu->op,
-    				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f );
-#endif
-        ops[cpu->op]( cpu );
-        cpu->pc++;
-        
-    }
+    1, 1, 3, 3, 3, 1, 2, 1, 1, 1, 3, 1, 3, 3, 2, 1,
+    1, 1, 3, 0, 3, 1, 2, 1, 1, 1, 3, 0, 3, 0, 2, 1,
+    2, 1, 2, 0, 0, 1, 2, 1, 2, 1, 3, 0, 0, 0, 2, 1,
+    2, 1, 2, 1, 0, 1, 2, 1, 2, 1, 3, 1, 0, 0, 2, 1,
+};
 
-    /* run interrupts if applicable */
+static void RunInterruptsIfNeeded( sm83_t *cpu ) {
     if ( ( cpu->ifl == 1 ) || ( cpu->halted ) ) {
-        active = ( read8( cpu, 0xffff, 0 ) & read8( cpu, 0xff0f, 0 ) ) & 0x1F; 
+        unsigned char active = ( read8( cpu, 0xffff, 0 ) & read8( cpu, 0xff0f, 0 ) ) & 0x1F; 
         if ( active ) {
             /*printf("running interrupt\n");*/
             pushw( cpu, cpu->pc );
@@ -265,15 +268,141 @@ static void Step( sm83_t *cpu ) {
         }
     }
     cpu->ifl = cpu->ifl_next;
+}
+
+static void StepCached( sm83_t *cpu ) {
+    fprintf( stderr, "unreachable!\n" );
+    exit(1);
+}
+
+static void Step( sm83_t *cpu ) {
+    unsigned short pair;
+    if ( cpu->fetched == 0 ) {
+        cpu->lastop = cpu->op;
+        cpu->op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
+
+#ifdef SM83_STATS
+        pair = ( cpu->lastop << 8 ) | cpu->op;
+        pairstats[pair]++;
+#endif
+
+        cpu->timetarget += timings[cpu->op];
+        cpu->fetched = 1;
+    }
+
+    cpu->timetarget--;
+    if ( cpu->timetarget > 0 )
+        return;
+
+    if ( ! cpu->halted ) {
+#ifdef SM83_TRACE
+        printf("[%04x] %02x b:%02x c:%02x d:%02x e:%02x h:%02x l:%02x a:%02x f:%02x\n", 
+    				cpu->pc, cpu->op,
+    				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f );
+#endif
+        ops[cpu->op]( cpu );
+        cpu->pc++;
+        
+    }
+    RunInterruptsIfNeeded( cpu );
     cpu->fetched = 0;
 }
 
+static void StepSimple( sm83_t *cpu ) {
+    cpu->op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
+    cpu->timetarget += timings[cpu->op];
+
+    if ( cpu->fetched == 0 ) {
+        cpu->timetarget += timings[cpu->op];
+        cpu->fetched = 1;
+
+        cpu->timetarget--;
+        if ( cpu->timetarget > 0 ) {
+            cpu->pc--;
+            return;
+        }
+    }
+
+#ifdef SM83_TRACE
+    printf("[%04x] %02x b:%02x c:%02x d:%02x e:%02x h:%02x l:%02x a:%02x f:%02x\n", 
+    				cpu->pc, cpu->op,
+    				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f );
+#endif
+    ops[cpu->op]( cpu );        
+    cpu->fetched = 0;
+}
+
+static void Decode( sm83_t *cpu ) {
+    int i;
+    unsigned char op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
+    unsigned char nextop = cpu->bus->Read8( cpu->bus, cpu->pc + sizes[op], 0 );
+
+    cpu->opcache[cpu->pc].op = ops[op];
+    cpu->opcache[cpu->pc].orig = op;
+    cpu->opcache[cpu->pc].cycles = timings[op];
+
+    for ( i = 0; sm83_fused_ops[i].impl != NULL; i++ ) {
+        if ( ( sm83_fused_ops[i].op1 == op ) && ( sm83_fused_ops[i].op2 == nextop ) ) {
+                cpu->opcache[cpu->pc].op = sm83_fused_ops[i].impl;
+                cpu->opcache[cpu->pc].cycles += timings[nextop];
+            break;
+        }
+    }
+
+#ifdef SM83_TRACE
+        printf("decoded: [%04x] %02x b:%02x c:%02x d:%02x e:%02x h:%02x l:%02x a:%02x f:%02x\n", 
+    				cpu->pc, cpu->opcache[cpu->pc].orig,
+    				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f );
+#endif
+    // prevent PC from incrementing since we didn't really run an instruction
+    cpu->pc--;
+}
+
+static unsigned long StepCachedMultiple( struct sm83_s *cpu, unsigned long tcycles, unsigned long * i, int * stopFlag ) {
+    for (*i = 0; ( *i < tcycles ) && (!(*stopFlag)); ) {
+        cpu->op = cpu->opcache[cpu->pc].orig;
+        cpu->timetarget += cpu->opcache[cpu->pc].cycles;
+
+        if ( cpu->timetarget > ( tcycles - *i ) ) {
+            cpu->timetarget -= tcycles - *i;
+            *i = tcycles;
+            break;
+        }
+
+        *i += cpu->timetarget;
+        cpu->timetarget = 0;
+
+        if ( ! cpu->halted ) {
+#ifdef SM83_TRACE
+            if ( cpu->opcache[cpu->pc].op != StepSimple )
+                printf("[%04x] %02x b:%02x c:%02x d:%02x e:%02x h:%02x l:%02x a:%02x f:%02x\n", 
+    				cpu->pc, cpu->opcache[cpu->pc].orig,
+    				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f );
+#endif    
+            cpu->opcache[cpu->pc].op( cpu );
+            cpu->pc++;
+        } else {
+            cpu->timetarget++;
+        }
+        RunInterruptsIfNeeded( cpu ); 
+    }
+
+    return *i;
+}
+
 static unsigned long StepMultiple( struct sm83_s *cpu, unsigned long tcycles, unsigned long * i, int * stopFlag ) {
-    unsigned char active;
+    unsigned short pair;
 
     for (*i = 0; ( *i < tcycles ) && (!(*stopFlag)); ) {
         if ( cpu->fetched == 0 ) {
+            cpu->lastop = cpu->op;
             cpu->op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
+
+#ifdef SM83_STATS
+            pair = ( cpu->lastop << 8 ) | cpu->op;
+            pairstats[pair]++;
+#endif
+
             cpu->timetarget += timings[cpu->op];
             cpu->fetched = 1;
         }
@@ -297,34 +426,7 @@ static unsigned long StepMultiple( struct sm83_s *cpu, unsigned long tcycles, un
             cpu->pc++;
         }
 
-        /* run interrupts if applicable */
-        if ( ( cpu->ifl == 1 ) || ( cpu->halted ) ) {
-            active = ( read8( cpu, 0xffff, 0 ) & read8( cpu, 0xff0f, 0 ) ) & 0x1F; 
-            if ( active ) {
-                /*printf("running interrupt\n");*/
-                pushw( cpu, cpu->pc );
-                cpu->halted = 0;
-                cpu->ifl = 0;
-                if ( active & 0x1 ) {
-                    write8( cpu, 0xff0f, active & 0x1E, 1 );
-                    cpu->pc = 0x40;
-                } else if ( active & 0x2 ) {
-                    write8( cpu, 0xff0f, active & 0x1D, 1 );
-                    cpu->pc = 0x48;
-                } else if ( active & 0x4 ) {
-                    write8( cpu, 0xff0f, active & 0x1B, 1 );
-                    cpu->pc = 0x50;
-                } else if ( active & 0x8 ) {
-                    write8( cpu, 0xff0f, active & 0x17, 1 );
-                    cpu->pc = 0x58;
-                } else if ( active & 0x10 ) {
-                    write8( cpu, 0xff0f, active & 0x0F, 1 );
-                    cpu->pc = 0x60;
-                }
-                cpu->timetarget += 0;
-            }
-        }
-        cpu->ifl = cpu->ifl_next;
+        RunInterruptsIfNeeded( cpu ); 
         cpu->fetched = 0;
     }
 
@@ -349,6 +451,69 @@ static void Reset( sm83_t *cpu ) {
     cpu->timetarget = 1;
 }
 
+static void PrepareOpcache( sm83_t *cpu ) {
+    int i;
+
+    if ( cpu->opcache == NULL ) {
+        cpu->opcache = malloc( sizeof( sm83_opcache_t ) * 65536 );
+    
+        // prepare rom regions for automatic decode
+        for ( i = 0; i < 0x8000; i++ ) {
+            cpu->opcache[i].op = Decode;
+            cpu->opcache[i].cycles = 0;
+            //Decode2( cpu, i );
+        }
+
+        // set up possibly-writable regions to use slow interpretation, to avoid having to care about cache invalidation
+        for ( i = 0x8000; i < 0x10000; i++ ) {
+            cpu->opcache[i].op = StepSimple;
+            cpu->opcache[i].cycles = 0;
+        }
+    }
+}
+
+void Sm83_SetInterpreterMode( sm83_t *cpu, interpreterMode_t mode ) {
+    switch( mode ) {
+        case INTERPRETER_MODE_CACHED:
+            cpu->Step = StepCached;
+            cpu->StepMultiple = StepCachedMultiple;
+            PrepareOpcache( cpu );
+            printf("sm83: enable cached mode\n");
+            break;
+        case INTERPRETER_MODE_STANDARD:
+        default:
+            cpu->Step = Step;
+            cpu->StepMultiple = StepMultiple;
+            printf("sm83: enable standard mode\n");
+            break;
+    }
+}
+
+void Sm83_InvalidateBankingRomCache( sm83_t * cpu ) {
+    int i;
+    if ( cpu->opcache != NULL ) {
+        for ( i = 0x4000; i < 0x8000; i++ ) {
+            cpu->opcache[i].op = Decode;
+            cpu->opcache[i].cycles = 0;
+        }
+    }
+}
+
+#ifdef SM83_STATS
+static void writepairstats( void ) {
+    FILE* fp = fopen("pairstats.log", "w");
+    int i;
+
+    for ( i = 0; i < 65536; i++ ) {
+        if ( pairstats[i] > 0 ) {
+            fprintf( fp, "%li : %04x\n", pairstats[i], i );
+        }
+    }
+
+    fclose(fp);
+}
+#endif
+
 sm83_t *Sm83( busDevice_t *bus ) {
 	sm83_t *cpu = calloc( 1, sizeof( sm83_t ) );
 	cpu->bus = bus;
@@ -356,6 +521,12 @@ sm83_t *Sm83( busDevice_t *bus ) {
 	cpu->Step = Step;
     cpu->StepMultiple = StepMultiple;
     cpu->Interrupt = Interrupt;
+
+#ifdef SM83_STATS
+    memset( pairstats, 0, sizeof( pairstats ) );
+    atexit( &writepairstats );
+#endif
+
 	Reset( cpu );
     printf( "sm83 cpu created\n" );
 	return cpu;

@@ -13,8 +13,11 @@ typedef struct sm83_s {
 	unsigned char op;
     unsigned char lastop;
 	int halted, fetched, timetarget;
+
     sm83_opcache_t *opcache;
-	/* external */
+	int cache_touched;
+
+    /* external */
     busDevice_t* bus;
     void (*Reset)( struct sm83_s *self );
     void (*Step)( struct sm83_s *self );

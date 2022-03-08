@@ -337,14 +337,18 @@ static void Decode( sm83_t *cpu ) {
     unsigned char op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
     unsigned char nextop = cpu->bus->Read8( cpu->bus, cpu->pc + sizes[op], 0 );
 
+    cpu->cache_touched = 1;
+
     cpu->opcache[cpu->pc].op = ops[op];
     cpu->opcache[cpu->pc].orig = op;
     cpu->opcache[cpu->pc].cycles = timings[op];
 
     for ( i = 0; sm83_fused_ops[i].impl != NULL; i++ ) {
         if ( ( sm83_fused_ops[i].op1 == op ) && ( sm83_fused_ops[i].op2 == nextop ) ) {
+                /*
                 cpu->opcache[cpu->pc].op = sm83_fused_ops[i].impl;
                 cpu->opcache[cpu->pc].cycles += timings[nextop];
+                */
             break;
         }
     }
@@ -354,7 +358,7 @@ static void Decode( sm83_t *cpu ) {
     				cpu->pc, cpu->opcache[cpu->pc].orig,
     				cpu->b, cpu->c, cpu->d, cpu->e, cpu->h, cpu->l, cpu->a, cpu->f );
 #endif
-    // prevent PC from incrementing since we didn't really run an instruction
+    /* prevent PC from incrementing since we didn't really run an instruction */
     cpu->pc--;
 }
 
@@ -457,14 +461,18 @@ static void PrepareOpcache( sm83_t *cpu ) {
     if ( cpu->opcache == NULL ) {
         cpu->opcache = malloc( sizeof( sm83_opcache_t ) * 65536 );
     
-        // prepare rom regions for automatic decode
+        if ( cpu->opcache == NULL ) {
+            exit(1);
+        }
+
+        /* prepare rom regions for automatic decode */
         for ( i = 0; i < 0x8000; i++ ) {
             cpu->opcache[i].op = Decode;
             cpu->opcache[i].cycles = 0;
-            //Decode2( cpu, i );
+            /*Decode2( cpu, i ); */
         }
 
-        // set up possibly-writable regions to use slow interpretation, to avoid having to care about cache invalidation
+        /* set up possibly-writable regions to use slow interpretation, to avoid having to care about cache invalidation */
         for ( i = 0x8000; i < 0x10000; i++ ) {
             cpu->opcache[i].op = StepSimple;
             cpu->opcache[i].cycles = 0;
@@ -491,10 +499,13 @@ void Sm83_SetInterpreterMode( sm83_t *cpu, interpreterMode_t mode ) {
 
 void Sm83_InvalidateBankingRomCache( sm83_t * cpu ) {
     int i;
-    if ( cpu->opcache != NULL ) {
-        for ( i = 0x4000; i < 0x8000; i++ ) {
-            cpu->opcache[i].op = Decode;
-            cpu->opcache[i].cycles = 0;
+
+    if ( cpu->cache_touched ) {
+        if ( cpu->opcache != NULL ) {
+            for ( i = 0x4000; i < 0x8000; i++ ) {
+                cpu->opcache[i].op = Decode;
+                cpu->opcache[i].cycles = 0;
+            }
         }
     }
 }

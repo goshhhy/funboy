@@ -17,7 +17,7 @@
 #define REGISTER( dev, name, where, size ) GenericBusMapping( dev, name, where, where + size - 1,  GenericRegister( name, NULL, size, NULL, NULL ) );
 
 void MapGbRegs( busDevice_t* gbbus );
-busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t *alarmManager );
+busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t *alarmManager, sm83_t * cpu );
 
 void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "SndCh1Sweep",     0xFF10, 1 );
@@ -64,7 +64,7 @@ void MapGbRegs( busDevice_t* gbbus ) {
     REGISTER( gbbus, "IntEnable",       0xFFFF, 1 );
 }
 
-busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t* alarmManager ) {
+busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t* alarmManager, sm83_t * cpu ) {
     unsigned char romName[17] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
     busDevice_t* rom = GenericRom( path, 512 );
     unsigned char mapperType;
@@ -92,12 +92,12 @@ busDevice_t *LoadRom( char* path, busDevice_t** cartram, alarmManager_t* alarmMa
         case 0x01:
         case 0x02:
         case 0x03:
-            rom = MBC1Rom( path, romSize, cartram, alarmManager );
+            rom = MBC1Rom( path, romSize, cartram, alarmManager, cpu );
             break;
         case 0x11:
         case 0x12:
         case 0x13:
-            rom = MBC3Rom( path, romSize, cartram, alarmManager );
+            rom = MBC3Rom( path, romSize, cartram, alarmManager, cpu );
             break;
         default:
             rom = GenericRom( path, romSize );
@@ -153,13 +153,15 @@ int gb_main( char *rompath ) {
 
     gbbus = GenericBus( "gb" );
 
+    cpu = Sm83( gbbus );
+
     ram = GenericRam( 0x2000, "ram" );
     zpage = GenericRam( 0x80, "zpage" );
     cram = GenericRam( 0x1800, "cram" );
     bgram = GenericRam( 0x800, "bgram" );
     oam = GenericRam( 0xa0, "oam" );
 
-    rom = LoadRom( rompath, &cartram, alarmManager );
+    rom = LoadRom( rompath, &cartram, alarmManager, cpu );
 
     if ( !rom ) {
         return 1;
@@ -177,13 +179,14 @@ int gb_main( char *rompath ) {
     MapGbRegs( gbbus );
     SerialToStderr( gbbus );
 
-    cpu = Sm83( gbbus );
     timer = GbTimer( gbbus, cpu, alarmManager );
     GbInput( gbbus, cpu );
 
     /* init ppu last, since it sets up the benchmark timer */
     ppu = GbPpu( gbbus, cpu, bgram, cram, oam, alarmManager );
     IO_SetEmuName( "funboy!" );
+
+    Sm83_SetInterpreterMode( cpu, INTERPRETER_MODE_CACHED );
 
     while ( go ) {
         for ( framestep = 0; framestep < (GB_CLOCK_SPEED / 59.97) - 1; ) {
@@ -196,7 +199,7 @@ int gb_main( char *rompath ) {
             AlarmTimePassed( alarmManager, substep, 1 );
             framestep += substep;
         }
-        go = IO_Update();
+        go = IO_Update( cpu );
     }
     return 0;
 }

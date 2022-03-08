@@ -1,2 +1,2 @@
-busDevice_t *MBC1Rom( char *fileName, size_t len, busDevice_t** cartram, alarmManager_t* alarmManager );
-busDevice_t *MBC3Rom( char *fileName, size_t len, busDevice_t** cartram, alarmManager_t* alarmManager );
+busDevice_t *MBC1Rom( char *fileName, size_t len, busDevice_t** cartram, alarmManager_t* alarmManager, sm83_t * cpu );
+busDevice_t *MBC3Rom( char *fileName, size_t len, busDevice_t** cartram, alarmManager_t* alarmManager, sm83_t * cpu );

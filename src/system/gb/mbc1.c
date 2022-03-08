@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "device.h"
+#include "sm83.h"
 #include "alarms.h"
 
 typedef struct romInfo_s {
@@ -24,6 +25,8 @@ typedef struct romInfo_s {
     char* ramBytes;
     int ram_select;
     int ram_enabled;
+
+    sm83_t* cpu;
 } romInfo_t;
 
 static unsigned char MBC1RomRead( busDevice_t *dev, busAddress_t addr, int final ) {
@@ -87,6 +90,8 @@ static void MBC1RomWrite( busDevice_t *dev, busAddress_t addr, unsigned char val
         /* rom/ram mode select */
         rom->ram_select = ( ( val & 0x1 ) == 1 );
     }
+    Sm83_InvalidateBankingRomCache( rom->cpu );
+
 }
 
 static void MBC1RamSaveCallback( void * data ) {
@@ -145,7 +150,7 @@ char* MBC1RomBytesPtr( busDevice_t *dev ) {
     return rom->bytes;
 }
 
-busDevice_t *MBC1Rom( char *fileName, size_t len, busDevice_t** _ram, alarmManager_t *alarmManager ) {
+busDevice_t *MBC1Rom( char *fileName, size_t len, busDevice_t** _ram, alarmManager_t *alarmManager, sm83_t * cpu ) {
     FILE *f = fopen( fileName, "r" );
     busDevice_t *dev;
     busDevice_t *ram;
@@ -207,6 +212,8 @@ busDevice_t *MBC1Rom( char *fileName, size_t len, busDevice_t** _ram, alarmManag
     rom->alarm.callbackData = rom;
 
     AlarmAdd( alarmManager, &rom->alarm );
+
+    rom->cpu = cpu;
 
     dev->data = rom;
     dev->Read8 = MBC1RomRead;

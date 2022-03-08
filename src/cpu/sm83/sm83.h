@@ -1,11 +1,19 @@
 #pragma pack(1)
 
+typedef struct {
+    void (*op)( void * cpu );
+    unsigned char orig;
+    int cycles;
+} sm83_opcache_t;
+
 typedef struct sm83_s { 
 	unsigned char b, c, d, e, h, l, a, f, ifl, ifl_next;
 	unsigned short sp, pc;
 	/* internal state */ 
 	unsigned char op;
+    unsigned char lastop;
 	int halted, fetched, timetarget;
+    sm83_opcache_t *opcache;
 	/* external */
     busDevice_t* bus;
     void (*Reset)( struct sm83_s *self );
@@ -24,6 +32,22 @@ typedef enum {
     LD_MODE_HL = 6,
     LD_MODE_A  = 7
 } ldMode_t;
+
+typedef enum {
+    INTERPRETER_MODE_STANDARD,
+    INTERPRETER_MODE_CACHED
+} interpreterMode_t;
+
+typedef struct {
+    unsigned char op1;
+    unsigned char op2;
+    void (*impl)( sm83_t * cpu );
+} sm83_fused_op_t;
+
+extern sm83_fused_op_t sm83_fused_ops[];
+
+void Sm83_SetInterpreterMode( sm83_t *cpu, interpreterMode_t mode );
+void Sm83_InvalidateBankingRomCache( sm83_t * cpu );
 
 sm83_t *Sm83( busDevice_t *bus );
 unsigned char read_r( sm83_t *cpu, unsigned char r );

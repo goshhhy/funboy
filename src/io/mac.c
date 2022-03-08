@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "device.h"
+#include "sm83.h"
 #include "gb.h"
 #include "io.h"
 
@@ -158,7 +160,7 @@ static void IO_HandleAppleMenuItem( short item ) {
 		; // todo: show about window
 	} else {
 		GetMenuItemText(GetMenuHandle(mApple), item, itemName);
-		OpenDeskAcc(itemName);
+		//OpenDeskAcc(itemName);
 	}
 }
 
@@ -195,7 +197,7 @@ static void IO_HandleMenuItem( long menuitem ) {
 	HiliteMenu(0);
 }
 
-int IO_Update( void ) {
+int IO_Update( sm83_t * cpu ) {
 	int eventMask = mDownMask | mUpMask | keyDownMask | keyUpMask | updateMask | activMask;
 	EventRecord e;
 	WindowPtr window;

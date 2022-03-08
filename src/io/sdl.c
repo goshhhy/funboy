@@ -1,6 +1,8 @@
 #include <SDL.h>
 #include <time.h>
 
+#include "device.h"
+#include "sm83.h"
 #include "io.h"
 #include "gb.h"
 
@@ -156,7 +158,7 @@ void IO_SetKeyReleaseCallback( void (*Callback)( int key ) ) {
 	KeyReleaseCallback = Callback;	
 }
 
-int IO_Update( void ) {
+int IO_Update( sm83_t * cpu ) {
 	SDL_Event e;
 	int r = 1;
 
@@ -176,6 +178,16 @@ int IO_Update( void ) {
 				windowSurf = SDL_GetWindowSurface( window );
 				break;
 			case SDL_KEYDOWN:
+				switch( e.key.keysym.scancode ) {
+					case 47:
+						Sm83_SetInterpreterMode( cpu, INTERPRETER_MODE_STANDARD );
+						break;
+					case 48:
+						Sm83_SetInterpreterMode( cpu, INTERPRETER_MODE_CACHED );
+						break;
+					default:
+						break;
+				}
 				if ( KeyPressCallback )
 					KeyPressCallback( e.key.keysym.scancode );
 				break;

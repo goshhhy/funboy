@@ -1,5 +1,5 @@
 int IO_Init( int wWidth, int wHeight, int rWidth, int rHeight );
-int IO_Update( void );
+int IO_Update( sm83_t * cpu );
 void IO_SetRenderRes( int x, int y );
 void IO_DrawPixel8( int x, int y, unsigned char color );
 void IO_DrawPixel24( int x, int y, unsigned char r, unsigned char g, unsigned char b );

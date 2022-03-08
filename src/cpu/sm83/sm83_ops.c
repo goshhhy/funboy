@@ -27,7 +27,7 @@
 #define CPU_FLAG_H(cpu) ( ( cpu->f >> 5 ) & 0x01 )
 #define CPU_FLAG_C(cpu) ( ( cpu->f >> 4 ) & 0x01 )
 
-void SetFlags( sm83_t *cpu, unsigned char z, unsigned char n, unsigned char h, unsigned char c ) {
+static void SetFlags( sm83_t *cpu, unsigned char z, unsigned char n, unsigned char h, unsigned char c ) {
     cpu->f = ( ( z & 0x01 ) << 7 ) | ( ( n & 0x01 ) << 6 ) | ( ( h & 0x01 ) << 5 ) | ( ( c & 0x01 ) << 4 );
 }
 

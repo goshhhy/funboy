@@ -17,6 +17,8 @@ extern int printSteps;
 long int pairstats[65536];
 #endif
 
+sm83_opcache_t * opcache_blank = NULL;
+
 /* support functions */
 
 unsigned char read_r( sm83_t *cpu, unsigned char r ) {
@@ -478,6 +480,16 @@ static void PrepareOpcache( sm83_t *cpu ) {
             cpu->opcache[i].cycles = 0;
         }
     }
+
+    if ( opcache_blank == NULL ) {
+        opcache_blank = malloc( sizeof( sm83_opcache_t ) * 16384 );
+
+        for ( i = 0; i < 0x4000; i++ ) {
+            opcache_blank[i].op = Decode;
+            opcache_blank[i].orig = 0;
+            opcache_blank[i].cycles = 0;
+        }
+    }
 }
 
 void Sm83_SetInterpreterMode( sm83_t *cpu, interpreterMode_t mode ) {
@@ -502,10 +514,11 @@ void Sm83_InvalidateBankingRomCache( sm83_t * cpu ) {
 
     if ( cpu->cache_touched ) {
         if ( cpu->opcache != NULL ) {
-            for ( i = 0x4000; i < 0x8000; i++ ) {
+            /*for ( i = 0x4000; i < 0x8000; i++ ) {
                 cpu->opcache[i].op = Decode;
                 cpu->opcache[i].cycles = 0;
-            }
+            }*/
+            memcpy( &cpu->opcache[0x4000], opcache_blank, sizeof(sm83_opcache_t) * 0x4000 );
         }
     }
 }

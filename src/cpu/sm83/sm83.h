@@ -3,7 +3,7 @@
 typedef struct {
     void (*op)( void * cpu );
     unsigned char orig;
-    int cycles;
+    unsigned char cycles;
 } sm83_opcache_t;
 
 typedef struct sm83_s { 

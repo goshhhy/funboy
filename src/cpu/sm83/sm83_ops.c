@@ -346,13 +346,40 @@ void op_jr( sm83_t* cpu ) {
     cpu->pc = ( cpu->pc + (signed char)read8( cpu, cpu->pc + 1, 1 ) ) + 1;
 }
 
-void op_jrx( sm83_t* cpu ) {
-    if ( NzNc( cpu ) ) {
+void op_jrz( sm83_t * cpu ) {
+    if ( CPU_FLAG_Z(cpu) == 1 ) {
         cpu->pc = cpu->pc + (signed char)read8( cpu, cpu->pc + 1, 1 );
         cpu->timetarget += 4;
     }
     cpu->pc++;
 }
+
+void op_jrnz( sm83_t * cpu ) {
+    if ( CPU_FLAG_Z(cpu) == 0 ) {
+        cpu->pc = cpu->pc + (signed char)read8( cpu, cpu->pc + 1, 1 );
+        cpu->timetarget += 4;
+    }
+    cpu->pc++;
+}
+
+void op_jrc( sm83_t * cpu ) {
+    if ( CPU_FLAG_C(cpu) == 1 ) {
+        cpu->pc = cpu->pc + (signed char)read8( cpu, cpu->pc + 1, 1 );
+        cpu->timetarget += 4;
+    }
+    cpu->pc++;
+}
+
+void op_jrnc( sm83_t * cpu ) {
+    if ( CPU_FLAG_C(cpu) == 0 ) {
+        cpu->pc = cpu->pc + (signed char)read8( cpu, cpu->pc + 1, 1 );
+        cpu->timetarget += 4;
+    }
+    cpu->pc++;
+}
+
+
+
 void op_call( sm83_t* cpu ) {
     pushw( cpu, cpu->pc + 3 );
     cpu->pc = read16( cpu, cpu->pc + 1, 1 ) - 1;

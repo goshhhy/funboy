@@ -137,7 +137,12 @@ void op_add16( sm83_t *cpu );
 void op_la16( sm83_t *cpu );
 void op_jp( sm83_t* cpu );
 void op_jr( sm83_t* cpu );
-void op_jrx( sm83_t* cpu );
+
+void op_jrnz( sm83_t* cpu );
+void op_jrnc( sm83_t* cpu );
+void op_jrz( sm83_t* cpu );
+void op_jrc( sm83_t* cpu );
+
 void op_call( sm83_t* cpu );
 void op_callx( sm83_t* cpu );
 void op_jpx( sm83_t* cpu );

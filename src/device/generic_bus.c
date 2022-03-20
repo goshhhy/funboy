@@ -58,7 +58,11 @@ static unsigned char GenericBusRead( busDevice_t *dev, busAddress_t addr, int fi
 
     mapping = GetTargetBusMapping( bus, addr );
 
+    #ifdef BUS_MAP_PARANOID
     if ( !mapping || mapping->device == dev )
+    #else
+    if ( !mapping )
+    #endif
         return bus->emptyVal;
 
     return mapping->device->Read8( mapping->device, addr - mapping->addr_start, final );

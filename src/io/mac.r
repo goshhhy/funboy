@@ -61,6 +61,7 @@ resource 'MENU' (mEmulation, preload) {
         "Pause", noicon, "P", nomark, plain;
         "Reset", noicon, "R", nomark, plain;
         "-", noicon, nokey, nomark, plain;
+        "Cached Mode", noicon, "T", nomark, plain;
         "Turbo", noicon, "T", nomark, plain;
     }
 };

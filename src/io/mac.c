@@ -43,7 +43,13 @@ enum {
 	iPause = 1,
 	iReset,
 
-	iTurbo = 4,
+	iCachedMode = 4,
+	iTurbo,
+};
+
+enum {
+	MARK_NONE,
+	MARK_CHECK = 0x12,
 };
 
 Rect 			gbRect, windRect;
@@ -173,10 +179,24 @@ static void IO_HandleFileMenuItem( short item ) {
 			break;
 	}
 }
-static void IO_HandleEmulationMenuItem( short item ) {}
+static void IO_HandleEmulationMenuItem( short item, sm83_t * cpu ) {
+	switch( item ) {
+		case iReset:
+			cpu->Reset( cpu );
+			break;
+		case iCachedMode:
+			if ( cpu->opcache == NULL ) {
+				Sm83_SetInterpreterMode( cpu, INTERPRETER_MODE_CACHED );
+			} else {
+				Sm83_SetInterpreterMode( cpu, INTERPRETER_MODE_STANDARD );
+			}
+		default:
+			break;
+	}
+}
 
 
-static void IO_HandleMenuItem( long menuitem ) {
+static void IO_HandleMenuItem( long menuitem, sm83_t * cpu ) {
 	short menu = (menuitem >> 16);
 	short item = (menuitem & 0xffff);
 
@@ -188,7 +208,7 @@ static void IO_HandleMenuItem( long menuitem ) {
 			IO_HandleFileMenuItem( item );
 			break;
 		case mEmulation:
-			IO_HandleEmulationMenuItem( item );
+			IO_HandleEmulationMenuItem( item, cpu );
 			break;
 		default:
 			return;
@@ -199,6 +219,7 @@ static void IO_HandleMenuItem( long menuitem ) {
 
 int IO_Update( sm83_t * cpu ) {
 	int eventMask = mDownMask | mUpMask | keyDownMask | keyUpMask | updateMask | activMask;
+	MenuHandle menu;
 	EventRecord e;
 	WindowPtr window;
 	static int updcount = 0;
@@ -217,7 +238,9 @@ int IO_Update( sm83_t * cpu ) {
 						break;
 					}
 					case inMenuBar: {
-						IO_HandleMenuItem( MenuSelect( e.where ) );
+						menu = GetMenuHandle( mEmulation );
+						SetItemMark( menu, iCachedMode, (cpu->opcache == NULL) ? MARK_NONE : MARK_CHECK );
+						IO_HandleMenuItem( MenuSelect( e.where ), cpu );
 						break;
 					}
 					case inContent: {

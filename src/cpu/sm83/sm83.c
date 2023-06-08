@@ -339,7 +339,8 @@ static void Decode( sm83_t *cpu ) {
     unsigned char op = cpu->bus->Read8( cpu->bus, cpu->pc, 0 );
     unsigned char nextop = cpu->bus->Read8( cpu->bus, cpu->pc + sizes[op], 0 );
 
-    cpu->cache_touched = 1;
+    if ( ( cpu->pc >= 0x4000 ) && ( cpu->pc < 0x8000 ) )
+        cpu->cache_touched = 1;
 
     cpu->opcache[cpu->pc].op = ops[op];
     cpu->opcache[cpu->pc].orig = op;
@@ -461,6 +462,7 @@ static void PrepareOpcache( sm83_t *cpu ) {
     int i;
 
     if ( cpu->opcache == NULL ) {
+        printf("allocating opcache\n");
         cpu->opcache = malloc( sizeof( sm83_opcache_t ) * 65536 );
     
         if ( cpu->opcache == NULL ) {
@@ -504,6 +506,10 @@ void Sm83_SetInterpreterMode( sm83_t *cpu, interpreterMode_t mode ) {
         default:
             cpu->Step = Step;
             cpu->StepMultiple = StepMultiple;
+            if ( cpu->opcache != NULL ) {
+                free( cpu->opcache );
+                cpu->opcache = NULL;
+            }
             printf("sm83: enable standard mode\n");
             break;
     }
@@ -520,6 +526,7 @@ void Sm83_InvalidateBankingRomCache( sm83_t * cpu ) {
             }*/
             memcpy( &cpu->opcache[0x4000], opcache_blank, sizeof(sm83_opcache_t) * 0x4000 );
         }
+        cpu->cache_touched = 0;
     }
 }
 
